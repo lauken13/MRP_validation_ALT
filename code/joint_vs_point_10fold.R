@@ -32,7 +32,7 @@ for(ITE in 1:10){
                          cores = 4)
   
   
-  calculate_model_validation <- function(K = 10, model, model_name, sample, sample_size){
+  calculate_model_validation <- function(K = 10, model, model_name, sample, sample_size, wts){
     # Use random fold as some combinations have 1 observations
     ids <- kfold_split_random(K = 10, N = sample_size)
     
@@ -58,7 +58,7 @@ for(ITE in 1:10){
     
     probabilities <-posterior_linpred(model, transform = TRUE)
     ll2_alt <- matrix(nrow=nrow(ll),ncol=K)
-    for (i in 1:K) { ll2_alt[,i] <- apply(probabilities[,cvii==i],1,mean) - mean(sample$y_obs[cvii==i]) }
+    for (i in 1:K) { ll2_alt[,i] <- apply(probabilities[,cvii==i],1,function(x)weighted.mean(x,w = wts[cvii==1])) - weighted.mean(sample$y_obs[cvii==i],w = wts[cvii==1]) }
     alt_scoring <- E_loo(ll2_alt, loo_foldK_joint$psis_object, type = "mean", log_ratios =ll2)
     
     model_validation_full <- data.frame(type = c("loo","10k_joint","10k_point","10k_errorscore"),
@@ -105,11 +105,11 @@ for(ITE in 1:10){
   
   
   #score without truth
-  full_model_scores <- calculate_model_validation(10, full_model_fit, "full",sample, sample_size = nrow(sample))
+  full_model_scores <- calculate_model_validation(10, full_model_fit, "full",sample, sample_size = nrow(sample), wts = sample$wts)
   
-  precision_model_scores <- calculate_model_validation(10, model_precision_only, "precision",sample, sample_size = nrow(sample))
+  precision_model_scores <- calculate_model_validation(10, model_precision_only, "precision",sample, sample_size = nrow(sample), wts = sample$wts)
   
-  bias_model_scores <- calculate_model_validation(10, model_bias_only, "bias",sample, sample_size = nrow(sample))
+  bias_model_scores <- calculate_model_validation(10, model_bias_only, "bias",sample, sample_size = nrow(sample), wts = sample$wts)
   
   all_scores <- rbind(full_model_scores,
                       bias_model_scores,
