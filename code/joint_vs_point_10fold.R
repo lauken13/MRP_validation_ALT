@@ -1,6 +1,6 @@
 source("code/create_data.R")
 
-n_samp = 500
+n_samp = 1000
 for(ITE in 1:10){
   print(ITE)
   data_use <- gen_dat(N= 20000, samp_size = n_samp, ITE = ITE)
@@ -58,7 +58,7 @@ for(ITE in 1:10){
     
     probabilities <-posterior_linpred(model, transform = TRUE)
     ll2_alt <- matrix(nrow=nrow(ll),ncol=K)
-    for (i in 1:K) { ll2_alt[,i] <- apply(probabilities[,cvii==i],1,function(x)weighted.mean(x,w = wts[cvii==1])) - weighted.mean(sample$y_obs[cvii==i],w = wts[cvii==1]) }
+    for (i in 1:K) { ll2_alt[,i] <- (apply(probabilities[,cvii==i],1,function(x)weighted.mean(x,w = wts[cvii==1])) - weighted.mean(sample$y_obs[cvii==i],w = wts[cvii==1]))^2}
     alt_scoring <- E_loo(ll2_alt, loo_foldK_joint$psis_object, type = "mean", log_ratios =ll2)
     
     model_validation_full <- data.frame(type = c("loo","10k_joint","10k_point","10k_errorscore"),
@@ -129,7 +129,7 @@ for(ITE in 1:10){
 }
 complete_scores <- data.frame(readRDS(paste0("results/joint_vs_point10fold/iter_",1,".rds")), iter = 1)
 
-for(i in 2: 6){
+for(i in 2: 10){
   complete_scores <- rbind(complete_scores, data.frame(readRDS(paste0("results/joint_vs_point10fold/iter_",i,".rds")), iter = i))
 }
 
