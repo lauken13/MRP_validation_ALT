@@ -6,7 +6,7 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mem-per-cpu=4000
 #SBATCH --cpus-per-task=4
-#SBATCH --array=1-100
+#SBATCH --array=1-2
 
 module load R
 

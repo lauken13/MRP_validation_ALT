@@ -1,6 +1,6 @@
 source("code/create_data.R")
 
-n_samp = 2000
+n_samp = 1000
 for(ITE in 1:10){
   print(ITE)
   data_use <- gen_dat(N= 20000, samp_size = n_samp, ITE = ITE)
@@ -32,7 +32,7 @@ for(ITE in 1:10){
                          cores = 4)
   
   
-  calculate_model_validation <- function(K = 10, model, model_name, sample, sample_size){
+  calculate_model_validation <- function(K = 10, model, model_name, sample, sample_size, wts){
     # Use random fold as some combinations have 1 observations
     ids <- kfold_split_random(K = 10, N = sample_size)
     
@@ -54,10 +54,18 @@ for(ITE in 1:10){
     
     sum(log(colSums(exp(ll)*w)))
     
-    model_validation_full <- data.frame(type = c("loo","10k_joint","10k_point"),
+    #alternate scoring rule
+    
+    probabilities <-posterior_linpred(model, transform = TRUE)
+    ll2_alt <- matrix(nrow=nrow(ll),ncol=K)
+    for (i in 1:K) { ll2_alt[,i] <- (apply(probabilities[,cvii==i],1,function(x)weighted.mean(x,w = wts[cvii==1])) - weighted.mean(sample$y_obs[cvii==i],w = wts[cvii==1]))^2}
+    alt_scoring <- E_loo(ll2_alt, loo_foldK_joint$psis_object, type = "mean", log_ratios =ll2)
+    
+    model_validation_full <- data.frame(type = c("loo","10k_joint","10k_point","10k_errorscore"),
                                         validation_score = c(loo_model$estimates['elpd_loo','Estimate'],
                                                   loo_foldK_joint$estimates['elpd_loo','Estimate'],
-                                                  sum(log(colSums(exp(ll)*w)))),
+                                                  sum(log(colSums(exp(ll)*w))),
+                                                  mean(alt_scoring$value)),
                                         model = model_name)
     
   }
@@ -97,11 +105,11 @@ for(ITE in 1:10){
   
   
   #score without truth
-  full_model_scores <- calculate_model_validation(10, full_model_fit, "full",sample, sample_size = nrow(sample))
+  full_model_scores <- calculate_model_validation(10, full_model_fit, "full",sample, sample_size = nrow(sample), wts = sample$wts)
   
-  precision_model_scores <- calculate_model_validation(10, model_precision_only, "precision",sample, sample_size = nrow(sample))
+  precision_model_scores <- calculate_model_validation(10, model_precision_only, "precision",sample, sample_size = nrow(sample), wts = sample$wts)
   
-  bias_model_scores <- calculate_model_validation(10, model_bias_only, "bias",sample, sample_size = nrow(sample))
+  bias_model_scores <- calculate_model_validation(10, model_bias_only, "bias",sample, sample_size = nrow(sample), wts = sample$wts)
   
   all_scores <- rbind(full_model_scores,
                       bias_model_scores,
@@ -127,4 +135,4 @@ for(i in 2: 10){
 
 ggplot(complete_scores, aes(x = validation_score, y = interval_score, colour = model))+
   geom_point()+
-  facet_grid(.~type)
+  facet_wrap(.~type, scales = "free_x")

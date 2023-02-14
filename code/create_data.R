@@ -5,11 +5,14 @@ library(tidyverse)
 library(brms) # need cmdstanr to use with brms
 library(loo) # calculating loo and elpd
 library(survey) # creating raked weights 
-library(tidybayes)
-
 
 ## generating data - 5 continuous predictors/covariates and a binary outcome 
-gen_dat <- function(N, samp_size, ITE){
+gen_dat <- function(N, samp_size, ITE, fully_filled = TRUE){
+
+  if(fully_filled & samp_size < (5*5*5*5)){
+    stop("Not enough samples to ensure every poststrat cell sampled")
+  }
+  
   set.seed(65438)
   
   pn = 100 # number of different population
@@ -61,14 +64,34 @@ gen_dat <- function(N, samp_size, ITE){
            X4 = X4_fct)
   
   ## generating samples
-  samp_loc = sample(1:nrow(popn_data), size = samp_size-(J*4), replace=F, prob = popn_data$incl_prob)
-  
-  ## making sure at least each level of the covariates are sampled
-  for(j in 1:J){
-    samp_loc[length(samp_loc)+1] = sample(which(popn_data$X1 == j), size=1)
-    samp_loc[length(samp_loc)+1] = sample(which(popn_data$X2 == j), size=1)
-    samp_loc[length(samp_loc)+1] = sample(which(popn_data$X3 == j), size=1)
-    samp_loc[length(samp_loc)+1] = sample(which(popn_data$X4 == j), size=1)
+  if(fully_filled){
+    ## making sure at least each level of the covariates are sampled
+    popn_data <- popn_data %>%
+      mutate(comb_levels = paste0(X1,X2,X3,X4))
+    level_combos = unique(popn_data$comb_levels)
+    print(length(level_combos))
+    samp_loc <- numeric(samp_size)
+    
+    samp_loc[1:(samp_size-length(level_combos))] = sample(1:nrow(popn_data), size = samp_size-length(level_combos), replace=F, prob = popn_data$incl_prob)
+    
+    for(j in 1:length(level_combos)){
+      if(length(which(popn_data$comb_levels %in% level_combos[j]))==1){
+        samp_loc[(samp_size-length(level_combos))+j] = which(popn_data$comb_levels %in% level_combos[j])
+      }else{
+        samp_loc[(samp_size-length(level_combos))+j] = sample(which(popn_data$comb_levels %in% level_combos[j]),size = 1)
+      }
+    }
+    
+  }else{
+    samp_loc = sample(1:nrow(popn_data), size = samp_size-(J*J*J*J), replace=F, prob = popn_data$incl_prob)
+    
+    ## making sure at least each level of the covariates are sampled
+    for(j in 1:J){
+      samp_loc[length(samp_loc)+1] = sample(which(popn_data$X1 == j), size=1)
+      samp_loc[length(samp_loc)+1] = sample(which(popn_data$X2 == j), size=1)
+      samp_loc[length(samp_loc)+1] = sample(which(popn_data$X3 == j), size=1)
+      samp_loc[length(samp_loc)+1] = sample(which(popn_data$X4 == j), size=1)
+    } 
   }
   
   samp_data = popn_data[samp_loc,]
