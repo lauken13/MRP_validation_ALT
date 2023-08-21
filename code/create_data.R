@@ -7,7 +7,7 @@ library(loo) # calculating loo and elpd
 library(survey) # creating raked weights 
 
 ## generating data - 5 continuous predictors/covariates and a binary outcome 
-gen_dat <- function(N, samp_size, ITE, fully_filled = TRUE){
+gen_dat <- function(N, samp_size, ITE, fully_filled = TRUE, continuous = FALSE){
 
   if(fully_filled & samp_size < (5*5*5*5)){
     stop("Not enough samples to ensure every poststrat cell sampled")
@@ -30,12 +30,20 @@ gen_dat <- function(N, samp_size, ITE, fully_filled = TRUE){
   strg1 = 1
   
   ## generating continuous and binary outcome
-  popn_data$y_prob <- inv_logit_scaled(wkly1*popn_data$X1_cont +
-                                         strg1*popn_data$X2_cont +
-                                         wkly1*popn_data$X3_cont +
-                                         strg1*popn_data$X4_cont)
-  popn_data$y_obs <- rbinom(N,1,popn_data$y_prob)
-  
+  if(continuous == TRUE){
+    popn_data$y_prob <- wkly1*popn_data$X1_cont +
+                                           strg1*popn_data$X2_cont +
+                                           wkly1*popn_data$X3_cont +
+                                           strg1*popn_data$X4_cont
+    popn_data$y_obs <- popn_data$y_prob
+    
+  }else{
+    popn_data$y_prob <- inv_logit_scaled(wkly1*popn_data$X1_cont +
+                                           strg1*popn_data$X2_cont +
+                                           wkly1*popn_data$X3_cont +
+                                           strg1*popn_data$X4_cont)
+    popn_data$y_obs <- rbinom(N,1,popn_data$y_prob)
+  }
   
   ## generate inclusion prob. for each individual
   # weakly predictive - 0.1 (sd), strongly predictive - 1 (sd)
