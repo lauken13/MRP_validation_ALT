@@ -9,8 +9,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --array=1-100
 
-
 module use /apps/skl/modules/all/
-module load R/4.1.2
+module load R/4.2.3-foss-2021b
 
 R CMD BATCH --no-save --no-restore score_model1.R script_model1_$SLURM_ARRAY_TASK_ID

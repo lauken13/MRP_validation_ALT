@@ -11,6 +11,6 @@
 
 
 module use /apps/skl/modules/all/
-module load R/4.1.2
+module load R/4.2.3-foss-2021b
 
 R CMD BATCH --no-save --no-restore code/score_model4.R script_model4_$SLURM_ARRAY_TASK_ID
