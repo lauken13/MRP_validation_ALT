@@ -60,26 +60,31 @@ full_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3) + (1|X4),
                       cores = 1,
                       save_pars = save_pars(all = TRUE))
 
-validate_score(model = full_model_fit,
+
+exact_scores <- population_score(model = full_model_fit,
            popn_counts = popn_ps$Nj,
            popn_obs = popn_ps$y_count)
 
-model_score_full <- validate_model(model = full_model_fit,
-                                   popn_counts = popn_ps$Nj,
-                                   sample_counts =sample_ps$n_j,
-                                   sample_obs = sample_ps$y_count,
-                                   popn_obs = popn_ps$y_count)
-
-model_score_full_manual <- validate_manually(model = full_model_fit,
+scores_calucated_from_sample <- sample_score(model = full_model_fit,
                                              popn_counts = popn_ps$Nj,
-                                             sample_counts =sample_ps$n_j,
-                                             sample_obs = sample_ps$y_count,
-                                             popn_obs = popn_ps$y_count)
-model_score_full <- rbind(model_score_full, model_score_full_manual)
-gc()
+                                             popn_obs = popn_ps$y_count,
+                                             sample_counts = sample_ps$n_j,
+                                             sample_obs = sample_ps$y_count)
 
-final_df <- data.frame(model_score_full, model = "full_only")
+bruteforce_scores <- bruteforce_loco_score(model = full_model_fit,
+               popn_counts = popn_ps$Nj,
+               popn_obs = popn_ps$y_count,
+               sample_counts =sample_ps$n_j,
+               sample_obs = sample_ps$y_count)
+
+approxloco_scores <- approx_loco_score(model = full_model_fit,
+                                       popn_counts = popn_ps$Nj,
+                                       popn_obs = popn_ps$y_count,
+                                       sample_counts =sample_ps$n_j,
+                                       sample_obs = sample_ps$y_count)
+
+final_df <- rbind(exact_scores, scores_calucated_from_sample,bruteforce_scores, approxloco_scores)
 
 final_df$iter = ITE
 
-saveRDS(final_df, paste0("results/section3_1/simulation_3_1_fullmodel_iteration",ITE,".rds"))
+saveRDS(final_df, paste0("results/model1/scores_validation_results",ITE,".rds"))
