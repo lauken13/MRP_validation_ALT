@@ -2,7 +2,7 @@
 
 #SBATCH -p skylake
 #SBATCH --job-name=score_mrp_model4
-#SBATCH --time=04:00:00
+#SBATCH --time=06:00:00
 #SBATCH --mail-user=lauren.a.kennedy@adelaide.edu.au
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mem-per-cpu=32000

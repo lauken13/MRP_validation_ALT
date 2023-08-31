@@ -129,7 +129,7 @@ bruteforce_loco_score <-
                          family = binomial(link = "logit"), 
                          backend = "rstan", 
                          cores = 1,
-                         iter = 1,
+                         iter = 1000,
                          save_pars = save_pars(all = TRUE))
       #save model diagnostics
       model_diagnostics$cell_iter <- i
