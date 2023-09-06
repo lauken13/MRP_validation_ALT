@@ -2,7 +2,7 @@
 
 #SBATCH -p skylake
 #SBATCH --job-name=score_mrp_model4
-#SBATCH --time=06:00:00
+#SBATCH --time=05:00:00
 #SBATCH --mail-user=lauren.a.kennedy@adelaide.edu.au
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mem-per-cpu=32000
@@ -13,4 +13,4 @@
 module use /apps/skl/modules/all/
 module load R/4.2.3-foss-2021b
 
-R CMD BATCH --no-save --no-restore code/score_model4.R script_model4_$SLURM_ARRAY_TASK_ID
+R CMD BATCH --no-save --no-restore score_model4.R script_model4_$SLURM_ARRAY_TASK_ID

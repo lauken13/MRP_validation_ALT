@@ -145,7 +145,7 @@ bruteforce_loco_score <-
     
     #squared error
     true_squarederror <- median((mrp_estimate - true_value)^2) #true 
-    cellwise_error <- (apply(loco_prediction,2,median)-popn_truth) 
+    cellwise_error <- (apply(loco_prediction,2,median)-sample_truth) 
     mean_cellwise_squarederror <- sum(Nj*(cellwise_error)^2)/N #summing squared cellwise using popn totals
     mrp_cellwise_squarederror <- (sum(cellwise_error*Nj)/N)^2 #estimating mrp squared error using pointwise
     
@@ -154,15 +154,15 @@ bruteforce_loco_score <-
     #needed for true crps
     model_preds_prime <- model_preds[shuffle,]
     mrp_estimate_prime <- apply(model_preds_prime,1,function(x) sum(Nj*x)/N)
-    EXY = apply(sweep(model_preds,2,popn_truth),1,function(x) sum(Nj*x)/N)
-    EXX = apply(model_preds - model_preds_prime,1,function(x) sum(Nj*x)/N)
+    EXY = sweep(model_preds,2,popn_truth)
+    EXX = model_preds - model_preds_prime
     #loco crps
     loco_prediction_prime <- loco_prediction[shuffle,]
     loco_EXY = apply(sweep(loco_prediction,2,sample_truth),1,function(x) sum(Nj*x)/N)
     loco_EXX = apply(loco_prediction - loco_prediction_prime,1,function(x) sum(Nj*x)/N)
     
     true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
-    mean_cellwise_crps <- sum(Nj*crps(loco_prediction,loco_prediction_prime, sample_truth)$estimates[1])/sum(Nj) #sum of pointwise loco crps
+    mean_cellwise_crps <- mean(.5*colMeans(abs(EXX)) + colMeans(abs(EXY)))
     mrp_cellwise_crps = .5*mean(abs(loco_EXX))-mean(abs(loco_EXY))
     
     results_df <- tribble(
