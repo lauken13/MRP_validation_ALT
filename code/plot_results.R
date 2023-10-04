@@ -37,7 +37,7 @@ ggplot(comparison_score, aes(x = value, y = mean_truth, colour = model)) +
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/proof_of_score.png", width = 10, height = 6, units = "cm")
+ggsave("figures/proof_of_score.png", width = 20, height = 12, units = "cm")
 
 #Compare scores using sample as proxxy for population 
 sample_score <- results_df %>%
@@ -55,7 +55,7 @@ ggplot(sample_score, aes(x = value, y = mean_truth, colour = model)) +
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/sample_score.png", , width = 10, height = 6, units = "cm")
+ggsave("figures/sample_score.png", width = 20, height = 12, units = "cm")
 
 #Brute force LOCO
 bruteforce_loco <- results_df %>%
@@ -73,7 +73,7 @@ ggplot(bruteforce_loco, aes(x = value, y = mean_truth, colour = model)) +
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/bruteforce_vs_truth.png", width = 10, height = 6, units = "cm")
+ggsave("figures/bruteforce_vs_truth.png", width = 20, height = 12, units = "cm")
 
 #Does brute force loco deviate from just using the sample score
 sample_score <- results_df %>%
@@ -91,7 +91,7 @@ ggplot(sample_score, aes(x = `SAMPLE ESTIMATE`, y = `BRUTE FORCE LOCO`, colour =
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/bruteforce_vs_sample_score.png", width = 10, height = 6, units = "cm")
+ggsave("figures/bruteforce_vs_sample_score.png", width = 20, height = 12, units = "cm")
 
 #PSIS LOCO
 approx_loco <- results_df %>%
@@ -127,4 +127,4 @@ sample_score %>%
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/bruteforce_vs_psisloco.png", width = "10cm", height = "6cm")
+ggsave("figures/bruteforce_vs_psisloco.png", width = 20, height = 12, units = "cm")
