@@ -242,14 +242,20 @@ approx_loco_score <-
     EXX = apply(model_preds - model_preds_prime,1,function(x) sum(Nj*x)/N)
     
     #loco crps
+    XX = model_preds - model_preds_prime
+    XY = sweep(model_preds,2,sample_truth)
+    prime_weights = weights(psis_obj_prime, log = FALSE)
+    weights = weights(psis_obj, log = FALSE)
+    
     psis_loco_EXX = E_loo(model_preds - model_preds_prime, psis_obj_prime, log_ratios = -log_lik_loco - log_lik_loco_prime)$value
     psis_loco_EXY = E_loo(sweep(model_preds,2,sample_truth), psis_obj, log_ratios = -log_lik_loco)$value
     
     loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco, r_eff = relative_eff(exp(-log_lik_loco), chain_id = rep(1:4, each = 1000)))
     
+    Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
     true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
     mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model), r_eff = relative_eff(exp(log_lik(model)), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
-    mrp_cellwise_crps = .5*abs(sum(Nj*psis_loco_EXX)/N)-abs(sum(Nj*psis_loco_EXY)/N)
+    mrp_cellwise_crps = .5*sum(abs(rowSums(prime_weights*XX*Nj_mat)/N)) - sum(abs(rowSums(weights*XY*Nj_mat)/N))
     
     results_df <- tribble(
       ~model,                   ~method,            ~score,          ~type_of_score, ~value,
