@@ -17,6 +17,7 @@ library(brms)
 library(survey)
 library(loo)
 library(here)
+library(posterior)
 
 source("code/create_data.R")
 source("code/error_helper_functions.R")
