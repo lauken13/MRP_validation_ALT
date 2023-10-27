@@ -131,32 +131,11 @@ ggplot(approx_loco, aes(x = value, y = mean_truth, colour = model)) +
 #Does psis deviate from just using the brute force
 sample_score <- results_df %>%
   filter(method %in% c("APPROX LOCO", "BRUTE FORCE LOCO"),
-         type_of_score %in% c("MRP CELLWISE-ELOO", "MRP CELLWISE"))%>%
-  rbind(mutate(results_df %>% filter(method =="BRUTE FORCE LOCO", type_of_score)))
+         type_of_score %in% c("MRP CELLWISE"))%>%
   pivot_wider(names_from = method, values_from = value)
-  
-bf_plots <-sample_score %>%
-  filter(type_of_score == "MRP CELLWISE" &
-           score == "CRPS") %>%
-  select(-type_of_score, -`APPROX LOCO`)
-eloo_plots <-sample_score %>%
-  filter(type_of_score == "MRP CELLWISE-ELOO" &
-           score == "CRPS") %>%
-  select(-type_of_score, -`BRUTE FORCE LOCO`) %>%
-  left_join(bf_plots)
-
-eloo_plots %>%
-  ggplot(., aes(x = `BRUTE FORCE LOCO`, y = `APPROX LOCO`, colour = model)) +
-  geom_abline() +
-  geom_point(size = 1, alpha = .7)+
-  theme_bw()+
-  ggthemes::scale_color_colorblind()+
-  xlab("Brute-force LOCO") + ylab("PSIS-LOCO")+
-  guides(color = guide_legend(nrow = 4))+
-  theme(legend.position = "bottom", 
-        legend.title = element_blank())
 
 sample_score %>%
+  filter(type_of_score == "MRP CELLWISE")%>%
   ggplot(., aes(x = `BRUTE FORCE LOCO`, y = `APPROX LOCO`, colour = model)) +
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
