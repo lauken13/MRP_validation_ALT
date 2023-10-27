@@ -322,34 +322,51 @@ approx_loco_referencemodel <-
     log_lik_reference_prime <- log_lik_loco[shuffle_reference,]
     log_lik_candidate_prime <- log_lik_loco[shuffle_candidate,]
     
+    psis_obj_reference_prime <- psis(-log_lik_reference-log_lik_reference_prime, r_eff = relative_eff(exp(-log_lik_reference-log_lik_reference_prime), chain_id = rep(1:4, each = 1000)))
+    psis_obj_candidate_prime <- psis(-log_lik_candidate-log_lik_candidate_prime, r_eff = relative_eff(exp(-log_lik_candidate-log_lik_candidate_prime), chain_id = rep(1:4, each = 1000)))
+    
+    weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)
+    weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)
+    
+    model_preds_ref_prime <- model_preds_ref[shuffle,]
+    model_preds_candidate_prime <- model_preds_candidate[shuffle,]
+    
     #resample
     reference_preds_resample = matrix(nrow = S, ncol = J)
     reference_preds_resample_prime = matrix(nrow = S, ncol = J)
     candidate_preds_resample = matrix(nrow = S, ncol = J)
     candidate_preds_resample_prime = matrix(nrow = S, ncol = J)
     for(j in 1:J){
-      model_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds_ref)[,j],
-                                                 weights = weights[,j])
-      model_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_ref_prime)[,j],
-                                                       weights = prime_weights[,j]) 
+      reference_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds_ref)[,j],
+                                                 weights = weights_reference[,j])
+      reference_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_ref_prime)[,j],
+                                                       weights = weights_reference_prime[,j]) 
+      candidate_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds_candidate)[,j],
+                                                     weights = weights_candidate[,j])
+      candidate_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_candidate_prime)[,j],
+                                                           weights = weights_candidate_prime[,j]) 
     }
-    
-    
     #Squared error
+    sample_truth_matrix <- t(matrix(rep(sample_truth, S), nrow = length(sample_truth)))
+    error_reference = model_preds_ref - sample_truth_matrix
+    error_candidate = model_preds_candidate - sample_truth_matrix
+    psis_error_reference <-
+      E_loo(error_reference,
+            psis_obj_reference,
+            type = "mean",
+            log_ratios = -log_lik_reference)$value
+    psis_error_candidate <-
+      E_loo(error_candidate,
+            psis_obj_candidate,
+            type = "mean",
+            log_ratios = -log_lik_candidate)$value
+  
+    
+    mrp_cellwise_squared_candidate_ref <- (sum((psis_error_candidate - psis_error_reference)*Nj)/N)^2 #reference vs candidate
+    mrp_true_squarederror <- median((mrp_estimate_candidate - mrp_estimate_ref)^2) #true 
     
     #CRPS
     
-    
-    #Reference scores
-    log_lik_loco <- log_lik(model)
-    true_squarederror_reference <- median((mrp_estimate_reference - true_value)^2) #reference model error 
-    true_squarederror_candidate <- median((mrp_estimate_candidate - true_value)^2) #candidate model error
-    model_error_diff <- true_squarederror_candidate - true_squarederror_reference
-    
-    #crps
-    shuffle <- sample(1:S, size = S, replace = FALSE)
-    log_lik_loco_prime <- log_lik_loco[shuffle,]
-    psis_obj_prime <- psis(-log_lik_loco-log_lik_loco_prime, r_eff = relative_eff(exp(-log_lik_loco-log_lik_loco_prime), chain_id = rep(1:4, each = 1000)))
     
     #needed for true crps
     model_preds_prime <- model_preds[shuffle,]
@@ -358,28 +375,22 @@ approx_loco_referencemodel <-
     EXX = apply(model_preds - model_preds_prime,1,function(x) sum(Nj*x)/N)
     
     #loco crps
-    XX = model_preds - model_preds_prime
-    XY = sweep(model_preds,2,sample_truth)
-    prime_weights = weights(psis_obj_prime, log = FALSE)
-    weights = weights(psis_obj, log = FALSE)
+    XX_resample_candidate = candidate_preds_resample - candidate_preds_resample_prime
+    YY_resample_reference = reference_preds_resample - reference_preds_resample_prime
+    XY_resample = reference_preds_resample - candidate_preds_resample
     
-    model_preds_resample = matrix(nrow = S, ncol = J)
-    model_preds_resample_prime = matrix(nrow = S, ncol = J)
-    for(j in 1:J){
-      model_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds)[,j],
-                                                 weights = weights[,j])
-      model_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_prime)[,j],
-                                                       weights = prime_weights[,j]) 
-    }
-    XX_resample = model_preds_resample - model_preds_resample_prime
-    XY_resample = sweep(model_preds_resample,2,sample_truth)
+    Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
+    mrp_reference_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample_candidate*Nj_mat)/N)) -
+                                 sum(abs(rowSums(XY_resample*Nj_mat)/N)) -
+                                 sum(abs(rowSums(YY_resample_reference*Nj_mat)/N)))
+    
     
     psis_loco_EXX = E_loo(model_preds - model_preds_prime, psis_obj_prime, log_ratios = -log_lik_loco - log_lik_loco_prime)$value
     psis_loco_EXY = E_loo(sweep(model_preds,2,sample_truth), psis_obj, log_ratios = -log_lik_loco)$value
     
     loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco, r_eff = relative_eff(exp(-log_lik_loco), chain_id = rep(1:4, each = 1000)))
     
-    Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
+
     true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
     mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model), r_eff = relative_eff(exp(log_lik(model)), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
     mrp_cellwise_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample*Nj_mat)/N)) - sum(abs(rowSums(XY_resample*Nj_mat)/N)))
