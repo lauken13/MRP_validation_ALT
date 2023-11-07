@@ -305,8 +305,10 @@ approx_loco_referencemodel <-
     psis_loco_candidate <- loo(candidate_model, save_psis = TRUE, reloo = TRUE, cores = 1)
     psis_obj_reference <- psis_loco_reference$psis_object
     psis_obj_candidate <- psis_loco_candidate$psis_object
-    psis_diagnostics <- data.frame(iter = ITE, model = paste(formula(model))[1], n_paretok0_7 = sum(psis_obj$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj$diagnostics$pareto_k>.7))
-    saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/model_",paste(formula(model))[1],"_simulation_iter",ITE,".rds"))
+    psis_diagnostics_candidate <- data.frame(iter = ITE, model = paste(formula(candidate_model))[1], n_paretok0_7 = sum(psis_obj_candidate$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj_candidate$diagnostics$pareto_k>.7))
+    psis_diagnostics_reference <- data.frame(iter = ITE, model = paste(formula(reference_model))[1], n_paretok0_7 = sum(psis_obj_reference$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj_reference$diagnostics$pareto_k>.7))
+    psis_diagnostics <- rbind(psis_diagnostics_candidate,psis_diagnostics_reference)
+    saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/model_",paste(formula(candidate_model))[1],"_simulation_iter",ITE,".rds"))
     
     #Obtain weights
     weights_reference = weights(psis_obj_reference, log = FALSE)
@@ -319,8 +321,8 @@ approx_loco_referencemodel <-
     shuffle_reference <- sample(1:S, size = S, replace = FALSE)
     shuffle_candidate <- sample(1:S, size = S, replace = FALSE)
     
-    log_lik_reference_prime <- log_lik_loco[shuffle_reference,]
-    log_lik_candidate_prime <- log_lik_loco[shuffle_candidate,]
+    log_lik_reference_prime <- log_lik_reference[shuffle_reference,]
+    log_lik_candidate_prime <- log_lik_candidate[shuffle_candidate,]
     
     psis_obj_reference_prime <- psis(-log_lik_reference-log_lik_reference_prime, r_eff = relative_eff(exp(-log_lik_reference-log_lik_reference_prime), chain_id = rep(1:4, each = 1000)))
     psis_obj_candidate_prime <- psis(-log_lik_candidate-log_lik_candidate_prime, r_eff = relative_eff(exp(-log_lik_candidate-log_lik_candidate_prime), chain_id = rep(1:4, each = 1000)))
@@ -328,8 +330,8 @@ approx_loco_referencemodel <-
     weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)
     weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)
     
-    model_preds_ref_prime <- model_preds_ref[shuffle,]
-    model_preds_candidate_prime <- model_preds_candidate[shuffle,]
+    model_preds_ref_prime <- model_preds_ref[shuffle_reference,]
+    model_preds_candidate_prime <- model_preds_candidate[shuffle_candidate,]
     
     #resample
     reference_preds_resample = matrix(nrow = S, ncol = J)
@@ -367,46 +369,21 @@ approx_loco_referencemodel <-
     
     #CRPS
     
-    
-    #needed for true crps
-    model_preds_prime <- model_preds[shuffle,]
-    mrp_estimate_prime <- apply(model_preds_prime,1,function(x) sum(Nj*x)/N)
-    EXY = apply(sweep(model_preds,2,popn_truth),1,function(x) sum(Nj*x)/N)
-    EXX = apply(model_preds - model_preds_prime,1,function(x) sum(Nj*x)/N)
-    
     #loco crps
     XX_resample_candidate = candidate_preds_resample - candidate_preds_resample_prime
     YY_resample_reference = reference_preds_resample - reference_preds_resample_prime
     XY_resample = reference_preds_resample - candidate_preds_resample
     
     Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
-    mrp_reference_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample_candidate*Nj_mat)/N)) -
-                                 sum(abs(rowSums(XY_resample*Nj_mat)/N)) -
-                                 sum(abs(rowSums(YY_resample_reference*Nj_mat)/N)))
+    mrp_reference_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample_candidate*Nj_mat)/N)) +
+                                  .5*sum(abs(rowSums(YY_resample_reference*Nj_mat)/N)) -
+                                 sum(abs(rowSums(XY_resample*Nj_mat)/N)))
     
-    
-    psis_loco_EXX = E_loo(model_preds - model_preds_prime, psis_obj_prime, log_ratios = -log_lik_loco - log_lik_loco_prime)$value
-    psis_loco_EXY = E_loo(sweep(model_preds,2,sample_truth), psis_obj, log_ratios = -log_lik_loco)$value
-    
-    loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco, r_eff = relative_eff(exp(-log_lik_loco), chain_id = rep(1:4, each = 1000)))
-    
-
-    true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
-    mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model), r_eff = relative_eff(exp(log_lik(model)), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
-    mrp_cellwise_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample*Nj_mat)/N)) - sum(abs(rowSums(XY_resample*Nj_mat)/N)))
-    mrp_cellwise_crps_weights = .5*sum(abs(rowSums(prime_weights*XX*Nj_mat)/N)) - sum(abs(rowSums(weights*XY*Nj_mat)/N))
-    mrp_cellwise_crps_eloo = .5*abs(sum(psis_loco_EXX*Nj))/N -abs(sum(psis_loco_EXY*Nj)/N)
     mrp_cellwise_crps_resample = 
       results_df <- tribble(
         ~model,                   ~method,            ~score,          ~type_of_score, ~value,
-        paste(formula(model))[1], "EXACT POPULATION", "CRPS",           "TRUE MRP",     true_crps,
-        paste(formula(model))[1], "APPROX LOCO",      "CRPS",           "MEAN CELLWISE",mean_cellwise_crps,
-        paste(formula(model))[1], "APPROX LOCO",      "CRPS",           "MRP CELLWISE", mrp_cellwise_crps,
-        paste(formula(model))[1], "APPROX LOCO",      "CRPS",           "MRP CELLWISE-ELOO", mrp_cellwise_crps_eloo,
-        paste(formula(model))[1], "APPROX LOCO",      "CRPS",           "MRP CELLWISE-WTS", mrp_cellwise_crps_weights,
-        paste(formula(model))[1], "EXACT POPULATION", "SQUARED ERROR",  "TRUE MRP",     true_squarederror,
-        paste(formula(model))[1], "APPROX LOCO",      "SQUARED ERROR",  "MEAN CELLWISE",mean_cellwise_squarederror,
-        paste(formula(model))[1], "APPROX LOCO",      "SQUARED ERROR",  "MRP CELLWISE", mrp_cellwise_squarederror,
+        paste(formula(candidate_model))[1], "APPROX LOCO REFERENCE",      "CRPS",           "MRP CELLWISE", mrp_reference_crps,
+        paste(formula(candidate_model))[1], "APPROX LOCO REFERENCE",      "SQUARED ERROR",  "MRP CELLWISE", mrp_cellwise_squared_candidate_ref
       )
     return(results_df)
   }
