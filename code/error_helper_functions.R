@@ -1,7 +1,8 @@
 population_score <-
   function(model,
            popn_counts,
-           popn_obs) {
+           popn_obs,
+           popn_ps = NULL) {
     popn_truth = popn_obs / popn_counts
     N = sum(popn_counts)
     Nj = popn_counts
@@ -9,8 +10,12 @@ population_score <-
     S = 4000
     
     #Predict probability for each cell
-    model_preds <-  posterior_linpred(model, transform = TRUE)
-    
+    if(is.null(popn_ps)){
+      model_preds <-  posterior_linpred(model,transform = TRUE)
+    }else{
+      model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
+    }
+
     #calculate mrp estimate and distribution
     mrp_estimate <- apply(model_preds,1,function(x) sum(Nj*x)/N)
     
@@ -49,6 +54,7 @@ sample_score <-
   function(model,
            popn_counts,
            popn_obs,
+           popn_ps = NULL,
            sample_counts,
            sample_obs) {
     popn_truth = popn_obs / popn_counts
@@ -59,7 +65,11 @@ sample_score <-
     S = 4000
     
     #Predict probability for each cell
-    model_preds <-  posterior_linpred(model, transform = TRUE)
+    if(is.null(popn_ps)){
+      model_preds <-  posterior_linpred(model,transform = TRUE)
+    }else{
+      model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
+    }
     
     #calculate mrp estimate and distribution
     mrp_estimate <- apply(model_preds,1,function(x) sum(Nj*x)/N)
@@ -99,6 +109,7 @@ bruteforce_loco_score <-
   function(model,
            popn_counts,
            popn_obs,
+           popn_ps = NULL,
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -109,7 +120,11 @@ bruteforce_loco_score <-
     S = 4000
     
     #Predict probability for each cell
-    model_preds <-  posterior_linpred(model, transform = TRUE)
+    if(is.null(popn_ps)){
+      model_preds <-  posterior_linpred(model,transform = TRUE)
+    }else{
+      model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
+    }
     
     #calculate mrp estimate and distribution
     mrp_estimate <- apply(model_preds,1,function(x) sum(Nj*x)/N)
@@ -181,6 +196,7 @@ approx_loco_score <-
   function(model,
            popn_counts,
            popn_obs,
+           popn_ps = NULL,
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -191,7 +207,11 @@ approx_loco_score <-
     S = 4000
     
     #Predict probability for each cell
-    model_preds <-  posterior_linpred(model, transform = TRUE)
+    if(is.null(popn_ps)){
+      model_preds <-  posterior_linpred(model,transform = TRUE)
+    }else{
+      model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
+    }
     
     #calculate mrp estimate and distribution
     mrp_estimate <- apply(model_preds,1,function(x) sum(Nj*x)/N)
@@ -280,6 +300,7 @@ approx_loco_referencemodel <-
   function(reference_model, candidate_model,
            popn_counts,
            popn_obs,
+           popn_ps = NULL,
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -290,8 +311,14 @@ approx_loco_referencemodel <-
     S = 4000
     
     #Predict probability for each cell
-    model_preds_ref <-  posterior_linpred(reference_model, transform = TRUE)
-    model_preds_candidate <-  posterior_linpred(candidate_model, transform = TRUE)
+    if(is_null(popn_ps)){
+      model_preds_ref <-  posterior_linpred(reference_model, transform = TRUE)
+      model_preds_candidate <-  posterior_linpred(candidate_model, transform = TRUE)      
+    }else{
+      model_preds_ref <-  posterior_linpred(reference_model, newdata = popn_ps, transform = TRUE)
+      model_preds_candidate <-  posterior_linpred(candidate_model, newdata = popn_ps, transform = TRUE)   
+    }
+
     
     #calculate mrp estimate and distribution
     mrp_estimate_ref <- apply(model_preds_ref,1,function(x) sum(Nj*x)/N)
