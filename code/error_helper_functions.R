@@ -197,6 +197,7 @@ approx_loco_score <-
            popn_counts,
            popn_obs,
            popn_ps = NULL,
+           observed_cells = NULL,
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -211,6 +212,11 @@ approx_loco_score <-
       model_preds <-  posterior_linpred(model,transform = TRUE)
     }else{
       model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
+    }
+    
+    #if working with full ps
+    if(is_null(observed_cells)){
+      observed_cells = rep(TRUE,length(popn_truth))
     }
     
     #calculate mrp estimate and distribution
@@ -234,17 +240,18 @@ approx_loco_score <-
     log_lik_loco <- log_lik(model)
     
     #squared error
+    error_full <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
+    error_full[observed_cells] <- error
     psis_error <-
-      E_loo(error,
+      E_loo(error_full,
             psis_obj,
-            type = "mean",
-            log_ratios = -log_lik_loco)$value
-    
+            type = "mean")$value[observed_cells]
+    squared_error_full <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
+    squared_error_full[observed_cells] <- squared_error  
     psis_squared_error <-
-      E_loo(squared_error,
+      E_loo(squared_error_full,
             psis_obj,
-            type = "mean",
-            log_ratios = -log_lik_loco)$value
+            type = "mean")$value[observed_cells]
     
     true_squarederror <- median((mrp_estimate - true_value)^2) #true 
     mean_cellwise_squarederror <- sum(Nj*(psis_squared_error))/N #summing squared cellwise using popn totals
@@ -264,8 +271,8 @@ approx_loco_score <-
     #loco crps
     XX = model_preds - model_preds_prime
     XY = sweep(model_preds,2,sample_truth)
-    prime_weights = weights(psis_obj_prime, log = FALSE)
-    weights = weights(psis_obj, log = FALSE)
+    prime_weights = weights(psis_obj_prime, log = FALSE)[,observed_cells]
+    weights = weights(psis_obj, log = FALSE)[,observed_cells]
     
     model_preds_resample = matrix(nrow = S, ncol = J)
     model_preds_resample_prime = matrix(nrow = S, ncol = J)
@@ -278,11 +285,11 @@ approx_loco_score <-
     XX_resample = model_preds_resample - model_preds_resample_prime
     XY_resample = sweep(model_preds_resample,2,sample_truth)
     
-    loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco, r_eff = relative_eff(exp(-log_lik_loco), chain_id = rep(1:4, each = 1000)))
+    loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco[,observed_cells], r_eff = relative_eff(exp(-log_lik_loco[,observed_cells]), chain_id = rep(1:4, each = 1000)))
     
     Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
     true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
-    mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model), r_eff = relative_eff(exp(log_lik(model)), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
+    mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model)[,observed_cells], r_eff = relative_eff(exp(log_lik(model)[,observed_cells]), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
     mrp_cellwise_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample*Nj_mat)/N)) - sum(abs(rowSums(XY_resample*Nj_mat)/N)))
     results_df <- tribble(
       ~model,                   ~method,            ~score,          ~type_of_score, ~value,
