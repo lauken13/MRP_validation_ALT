@@ -61,16 +61,28 @@ full_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3) + (1|X4),
                       cores = 1,
                       save_pars = save_pars(all = TRUE))
 
-approx_loco_sae_scores <- approx_loco_sae_score(model = full_model_fit,
+approx_loco_sae_score_x1 <- approx_loco_sae_score(model = full_model_fit,
                                                 small_area_var = "X1",
-                                       popn_counts = popn_ps$Nj,
-                                       popn_obs = popn_ps$y_count,
-                                       sample_counts =sample_ps$n_j,
-                                       sample_obs = sample_ps$y_count)
+                                                popn_ps = popn_ps,
+                                                sample_ps = sample_ps)
 
-# final_df <- rbind(exact_scores, scores_calucated_from_sample,bruteforce_scores, approxloco_scores)
-final_df <- approxloco_scores
+approx_loco_sae_score_x2 <- approx_loco_sae_score(model = full_model_fit,
+                                                  small_area_var = "X2",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+approx_loco_sae_score_x3 <- approx_loco_sae_score(model = full_model_fit,
+                                                  small_area_var = "X3",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+approx_loco_sae_score_x4 <- approx_loco_sae_score(model = full_model_fit,
+                                                  small_area_var = "X4",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+final_df <- rbind(approx_loco_sae_score_x1,approx_loco_sae_score_x2,approx_loco_sae_score_x3,approx_loco_sae_score_x4)
 
 final_df$iter = ITE
 
-saveRDS(final_df, paste0("results/model1/scores_validation_results_approx",ITE,".rds"))
+saveRDS(final_df, paste0("results/sae_scores/scores_sae_approx",ITE,".rds"))

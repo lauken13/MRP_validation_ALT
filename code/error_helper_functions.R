@@ -208,14 +208,14 @@ approx_loco_score <-
     S = 4000
     
     #Predict probability for each cell
-    if(is.null(popn_ps)){
+    if(is_empty(popn_ps)){
       model_preds <-  posterior_linpred(model,transform = TRUE)
     }else{
       model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
     }
     
     #if working with full ps
-    if(is_null(observed_cells)){
+    if(is_empty(observed_cells)){
       observed_cells = rep(TRUE,length(popn_truth))
     }
     
@@ -241,13 +241,13 @@ approx_loco_score <-
     
     #squared error
     error_full <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
-    error_full[observed_cells] <- error
+    error_full[,observed_cells] <- error
     psis_error <-
       E_loo(error_full,
             psis_obj,
             type = "mean")$value[observed_cells]
     squared_error_full <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
-    squared_error_full[observed_cells] <- squared_error  
+    squared_error_full[,observed_cells] <- squared_error  
     psis_squared_error <-
       E_loo(squared_error_full,
             psis_obj,
@@ -421,3 +421,40 @@ approx_loco_referencemodel <-
       )
     return(results_df)
   }
+
+approx_loco_sae_score <-
+  function(model,
+           small_area_var,
+           popn_ps,
+           sample_ps) {
+    
+    levels_of_small_area_var = levels(as.factor(popn_ps[[small_area_var]]))
+    
+    for(k in 1:length(levels_of_small_area_var)){
+      target_area <- levels_of_small_area_var[[k]]
+      popn_ps_sae <- popn_ps %>%
+        filter(.data[[small_area_var]] == target_area) %>%
+        mutate(n_j = Nj)
+      sample_ps_sae <- sample_ps %>%
+        filter(.data[[small_area_var]] == target_area)
+      popn_counts_sae <-popn_ps_sae$Nj
+      popn_obs_sae <- popn_ps_sae$y_count
+      sample_counts_sae <- sample_ps_sae$n_j
+      sample_obs_sae <- sample_ps_sae$y_count
+      loco_approx_score_sae = approx_loco_score(model,
+                 popn_counts = popn_counts_sae,
+                 popn_obs = popn_obs_sae,
+                 popn_ps = popn_ps_sae,
+                 observed_cells = popn_ps[[small_area_var]] == target_area, 
+                 sample_counts = sample_counts_sae,
+                 sample_obs = sample_obs_sae) 
+      if(target_area == levels_of_small_area_var[1]){
+        results_df = data.frame(loco_approx_score_sae, level = target_area, variable = small_area_var)
+      }else{
+        results_df = rbind(results_df,
+                           data.frame(loco_approx_score_sae, level = target_area, variable = small_area_var))
+      }
+    }
+    return(results_df)
+  }
+
