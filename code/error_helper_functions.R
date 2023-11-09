@@ -426,16 +426,18 @@ approx_loco_sae_score <-
     for(k in 1:length(levels_of_small_area_var)){
       target_area <- levels_of_small_area_var[[k]]
       popn_ps_sae <- popn_ps %>%
-        filter(.data[[small_area_var]] == target_area)
+        filter(.data[[small_area_var]] == target_area) %>%
+        mutate(n_j = Nj)
       sample_ps_sae <- sample_ps %>%
         filter(.data[[small_area_var]] == target_area)
       popn_counts_sae <-popn_ps_sae$Nj
       popn_obs_sae <- popn_ps_sae$y_count
       sample_counts_sae <- sample_ps_sae$n_j
       sample_obs_sae <- sample_ps_sae$y_count
-      loco_approx_score_sae <- approx_loco_score(model,
+      loco_approx_score_sae <- population_score(model,
                  popn_counts <- popn_counts_sae,
                  popn_obs <- popn_obs_sae,
+                 popn_ps <- popn_ps_sae,
                  sample_counts <- sample_counts_sae,
                  sample_obs <- sample_obs_sae) 
     }
