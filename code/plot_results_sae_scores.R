@@ -16,9 +16,8 @@ for(i in 2:100){
 
 true_score <- results_saemodel %>%
   filter(method == "EXACT POPULATION" & type_of_score == "TRUE MRP")%>%
-  group_by(model, score, iter, level, variable)%>%
-  summarise(mean_truth = mean(value))%>% #small variations across model runs
-  ungroup()
+  rename(true_score = value)%>%
+  select(-type_of_score, - method)
 
 comparison_score <- results_saemodel %>%
   filter(method == "APPROX LOCO" & type_of_score == "MRP CELLWISE")%>%
@@ -26,9 +25,9 @@ comparison_score <- results_saemodel %>%
 
 comparison_score %>%
   filter(score == "SQUARED ERROR")%>%
-ggplot(aes(x = value, y = mean_truth, colour = level, shape = model))+
+ggplot(aes(x = value, y = true_score, colour = level, shape = model))+
   geom_point(size = 1, alpha = .7)+
-  facet_grid(variable~score, scales = "free")+
+  facet_grid(variable~score)+
   theme_bw()+
   ggthemes::scale_color_colorblind()+  guides(color = guide_legend(nrow = 4))+
   theme(legend.position = "bottom", 

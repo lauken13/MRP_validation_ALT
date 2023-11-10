@@ -308,6 +308,7 @@ approx_loco_referencemodel <-
            popn_counts,
            popn_obs,
            popn_ps = NULL,
+           observed_counts = NULL,
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -326,6 +327,10 @@ approx_loco_referencemodel <-
       model_preds_candidate <-  posterior_linpred(candidate_model, newdata = popn_ps, transform = TRUE)   
     }
 
+    #if working with full ps
+    if(is_empty(observed_cells)){
+      observed_cells = rep(TRUE,length(popn_truth))
+    }
     
     #calculate mrp estimate and distribution
     mrp_estimate_ref <- apply(model_preds_ref,1,function(x) sum(Nj*x)/N)
@@ -345,8 +350,8 @@ approx_loco_referencemodel <-
     saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/model_",paste(formula(candidate_model))[1],"_simulation_iter",ITE,".rds"))
     
     #Obtain weights
-    weights_reference = weights(psis_obj_reference, log = FALSE)
-    weights_candidate = weights(psis_obj_candidate, log = FALSE)
+    weights_reference = weights(psis_obj_reference, log = FALSE)[,observed_cells]
+    weights_candidate = weights(psis_obj_candidate, log = FALSE)[,observed_cells]
     
     #Shuffle
     log_lik_reference = log_lik(reference_model)
@@ -355,17 +360,17 @@ approx_loco_referencemodel <-
     shuffle_reference <- sample(1:S, size = S, replace = FALSE)
     shuffle_candidate <- sample(1:S, size = S, replace = FALSE)
     
-    log_lik_reference_prime <- log_lik_reference[shuffle_reference,]
-    log_lik_candidate_prime <- log_lik_candidate[shuffle_candidate,]
+    log_lik_reference_prime <- log_lik_reference[shuffle_reference,observed_cells]
+    log_lik_candidate_prime <- log_lik_candidate[shuffle_candidate,observed_cells]
     
     psis_obj_reference_prime <- psis(-log_lik_reference-log_lik_reference_prime, r_eff = relative_eff(exp(-log_lik_reference-log_lik_reference_prime), chain_id = rep(1:4, each = 1000)))
     psis_obj_candidate_prime <- psis(-log_lik_candidate-log_lik_candidate_prime, r_eff = relative_eff(exp(-log_lik_candidate-log_lik_candidate_prime), chain_id = rep(1:4, each = 1000)))
     
-    weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)
-    weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)
+    weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)[,observed_cells]
+    weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)[,observed_cells]
     
-    model_preds_ref_prime <- model_preds_ref[shuffle_reference,]
-    model_preds_candidate_prime <- model_preds_candidate[shuffle_candidate,]
+    model_preds_ref_prime <- model_preds_ref[shuffle_reference,observed_cells]
+    model_preds_candidate_prime <- model_preds_candidate[shuffle_candidate,observed_cells]
     
     #resample
     reference_preds_resample = matrix(nrow = S, ncol = J)
@@ -386,17 +391,21 @@ approx_loco_referencemodel <-
     sample_truth_matrix <- t(matrix(rep(sample_truth, S), nrow = length(sample_truth)))
     error_reference = model_preds_ref - sample_truth_matrix
     error_candidate = model_preds_candidate - sample_truth_matrix
+    
+    error_full_reference <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
+    error_full_reference[,observed_cells] <- error_reference
     psis_error_reference <-
-      E_loo(error_reference,
-            psis_obj_reference,
-            type = "mean",
-            log_ratios = -log_lik_reference)$value
+      E_loo(error_full_reference,
+            psis_obj,
+            type = "mean")$value[observed_cells]
+
+    
+    error_full_candidate <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
+    error_full_candidate[,observed_cells] <- error_candidate
     psis_error_candidate <-
-      E_loo(error_candidate,
-            psis_obj_candidate,
-            type = "mean",
-            log_ratios = -log_lik_candidate)$value
-  
+      E_loo(error_full_candidate,
+            psis_obj,
+            type = "mean")$value[observed_cells]
     
     mrp_cellwise_squared_candidate_ref <- (sum((psis_error_candidate - psis_error_reference)*Nj)/N)^2 #reference vs candidate
     mrp_true_squarederror <- median((mrp_estimate_candidate - mrp_estimate_ref)^2) #true 
