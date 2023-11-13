@@ -171,7 +171,70 @@ nuisance_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = nuisance_mode
 
 final_df_nuisancemodel <- rbind(nuisance_approx_loco_sae_score_x1,nuisance_approx_loco_sae_score_x2,nuisance_approx_loco_sae_score_x3,nuisance_approx_loco_sae_score_x4)
 
-final_df <- rbind(final_df_fullmodel,final_df_biasmodel, final_df_precisionmodel, final_df_nuisancemodel)
+
+nuisance_x1_model_fit <- brm(y_count|trials(n_j) ~ (1|X1), 
+                          data = sample_ps, 
+                          family = binomial(link = "logit"), 
+                          backend = "rstan", 
+                          cores = 1,
+                          save_pars = save_pars(all = TRUE))
+
+nuisance_x1_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X1",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+nuisance_x1_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X2",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+nuisance_x1_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X3",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+nuisance_x1_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X4",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+
+final_df_nuisance_x1model <- rbind(nuisance_x1_approx_loco_sae_score_x1,nuisance_x1_approx_loco_sae_score_x2,nuisance_x1_approx_loco_sae_score_x3,nuisance_x1_approx_loco_sae_score_x4)
+
+nuisance_x3_model_fit <- brm(y_count|trials(n_j) ~ (1|X3), 
+                             data = sample_ps, 
+                             family = binomial(link = "logit"), 
+                             backend = "rstan", 
+                             cores = 1,
+                             save_pars = save_pars(all = TRUE))
+
+nuisance_x3_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X1",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+nuisance_x3_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X2",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+nuisance_x3_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X3",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+nuisance_x3_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X4",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+
+final_df_nuisance_x3model <- rbind(nuisance_x3_approx_loco_sae_score_x1,nuisance_x3_approx_loco_sae_score_x2,nuisance_x3_approx_loco_sae_score_x3,nuisance_x3_approx_loco_sae_score_x4)
+
+
+
+final_df <- rbind(final_df_fullmodel,final_df_biasmodel, final_df_precisionmodel, final_df_nuisancemodel,final_df_nuisancemodel_x1,final_df_nuisancemodel_x3)
 
 final_df$iter = ITE
 

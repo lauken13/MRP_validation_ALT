@@ -197,7 +197,7 @@ approx_loco_score <-
            popn_counts,
            popn_obs,
            popn_ps = NULL,
-           observed_cells = NULL,
+           observed_cells_sample = NULL, #allows you to estimate errors for saes
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -215,8 +215,8 @@ approx_loco_score <-
     }
     
     #if working with full ps
-    if(is_empty(observed_cells)){
-      observed_cells = rep(TRUE,length(popn_truth))
+    if(is_empty(observed_cells_sample)){
+      observed_cells_sample = rep(TRUE,length(popn_truth))
     }
     
     #calculate mrp estimate and distribution
@@ -241,17 +241,17 @@ approx_loco_score <-
     
     #squared error
     error_full <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
-    error_full[,observed_cells] <- error
+    error_full[,observed_cells_sample] <- error
     psis_error <-
       E_loo(error_full,
             psis_obj,
-            type = "mean")$value[observed_cells]
+            type = "mean")$value[observed_cells_sample]
     squared_error_full <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
-    squared_error_full[,observed_cells] <- squared_error  
+    squared_error_full[,observed_cells_sample] <- squared_error  
     psis_squared_error <-
       E_loo(squared_error_full,
             psis_obj,
-            type = "mean")$value[observed_cells]
+            type = "mean")$value[observed_cells_sample]
     
     true_squarederror <- median((mrp_estimate - true_value)^2) #true 
     mean_cellwise_squarederror <- sum(Nj*(psis_squared_error))/N #summing squared cellwise using popn totals
@@ -271,8 +271,8 @@ approx_loco_score <-
     #loco crps
     XX = model_preds - model_preds_prime
     XY = sweep(model_preds,2,sample_truth)
-    prime_weights = weights(psis_obj_prime, log = FALSE)[,observed_cells]
-    weights = weights(psis_obj, log = FALSE)[,observed_cells]
+    prime_weights = weights(psis_obj_prime, log = FALSE)[,observed_cells_sample]
+    weights = weights(psis_obj, log = FALSE)[,observed_cells_sample]
     
     model_preds_resample = matrix(nrow = S, ncol = J)
     model_preds_resample_prime = matrix(nrow = S, ncol = J)
@@ -285,11 +285,11 @@ approx_loco_score <-
     XX_resample = model_preds_resample - model_preds_resample_prime
     XY_resample = sweep(model_preds_resample,2,sample_truth)
     
-    loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco[,observed_cells], r_eff = relative_eff(exp(-log_lik_loco[,observed_cells]), chain_id = rep(1:4, each = 1000)))
+    loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco[,observed_cells_sample], r_eff = relative_eff(exp(-log_lik_loco[,observed_cells_sample]), chain_id = rep(1:4, each = 1000)))
     
     Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
     true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
-    mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model)[,observed_cells], r_eff = relative_eff(exp(log_lik(model)[,observed_cells]), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
+    mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model)[,observed_cells_sample], r_eff = relative_eff(exp(log_lik(model)[,observed_cells_sample]), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
     mrp_cellwise_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample*Nj_mat)/N)) - sum(abs(rowSums(XY_resample*Nj_mat)/N)))
     results_df <- tribble(
       ~model,                   ~method,            ~score,          ~type_of_score, ~value,
@@ -308,7 +308,7 @@ approx_loco_referencemodel <-
            popn_counts,
            popn_obs,
            popn_ps = NULL,
-           observed_counts = NULL,
+           observed_cells_sample = NULL, #allows you to estimate errors for saes
            sample_counts,
            sample_obs) {
     sample_truth = sample_obs / sample_counts
@@ -328,8 +328,8 @@ approx_loco_referencemodel <-
     }
 
     #if working with full ps
-    if(is_empty(observed_cells)){
-      observed_cells = rep(TRUE,length(popn_truth))
+    if(is_empty(observed_cells_sample)){
+      observed_cells_sample = rep(TRUE,length(popn_truth))
     }
     
     #calculate mrp estimate and distribution
@@ -350,8 +350,8 @@ approx_loco_referencemodel <-
     saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/model_",paste(formula(candidate_model))[1],"_simulation_iter",ITE,".rds"))
     
     #Obtain weights
-    weights_reference = weights(psis_obj_reference, log = FALSE)[,observed_cells]
-    weights_candidate = weights(psis_obj_candidate, log = FALSE)[,observed_cells]
+    weights_reference = weights(psis_obj_reference, log = FALSE)[,observed_cells_sample]
+    weights_candidate = weights(psis_obj_candidate, log = FALSE)[,observed_cells_sample]
     
     #Shuffle
     log_lik_reference = log_lik(reference_model)
@@ -360,17 +360,17 @@ approx_loco_referencemodel <-
     shuffle_reference <- sample(1:S, size = S, replace = FALSE)
     shuffle_candidate <- sample(1:S, size = S, replace = FALSE)
     
-    log_lik_reference_prime <- log_lik_reference[shuffle_reference,observed_cells]
-    log_lik_candidate_prime <- log_lik_candidate[shuffle_candidate,observed_cells]
+    log_lik_reference_prime <- log_lik_reference[shuffle_reference,observed_cells_sample]
+    log_lik_candidate_prime <- log_lik_candidate[shuffle_candidate,observed_cells_sample]
     
     psis_obj_reference_prime <- psis(-log_lik_reference-log_lik_reference_prime, r_eff = relative_eff(exp(-log_lik_reference-log_lik_reference_prime), chain_id = rep(1:4, each = 1000)))
     psis_obj_candidate_prime <- psis(-log_lik_candidate-log_lik_candidate_prime, r_eff = relative_eff(exp(-log_lik_candidate-log_lik_candidate_prime), chain_id = rep(1:4, each = 1000)))
     
-    weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)[,observed_cells]
-    weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)[,observed_cells]
+    weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)[,observed_cells_sample]
+    weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)[,observed_cells_sample]
     
-    model_preds_ref_prime <- model_preds_ref[shuffle_reference,observed_cells]
-    model_preds_candidate_prime <- model_preds_candidate[shuffle_candidate,observed_cells]
+    model_preds_ref_prime <- model_preds_ref[shuffle_reference,observed_cells_sample]
+    model_preds_candidate_prime <- model_preds_candidate[shuffle_candidate,observed_cells_sample]
     
     #resample
     reference_preds_resample = matrix(nrow = S, ncol = J)
@@ -393,19 +393,19 @@ approx_loco_referencemodel <-
     error_candidate = model_preds_candidate - sample_truth_matrix
     
     error_full_reference <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
-    error_full_reference[,observed_cells] <- error_reference
+    error_full_reference[,observed_cells_sample] <- error_reference
     psis_error_reference <-
       E_loo(error_full_reference,
             psis_obj,
-            type = "mean")$value[observed_cells]
+            type = "mean")$value[observed_cells_sample]
 
     
     error_full_candidate <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
-    error_full_candidate[,observed_cells] <- error_candidate
+    error_full_candidate[,observed_cells_sample] <- error_candidate
     psis_error_candidate <-
       E_loo(error_full_candidate,
             psis_obj,
-            type = "mean")$value[observed_cells]
+            type = "mean")$value[observed_cells_sample]
     
     mrp_cellwise_squared_candidate_ref <- (sum((psis_error_candidate - psis_error_reference)*Nj)/N)^2 #reference vs candidate
     mrp_true_squarederror <- median((mrp_estimate_candidate - mrp_estimate_ref)^2) #true 
@@ -466,4 +466,53 @@ approx_loco_sae_score <-
     }
     return(results_df)
   }
+
+parially_obs_approx_loco_score <-
+  function(reference_model,
+           candidate_model,
+           popn_ps,
+           sample_ps) {
+    
+    stopifnot("The population is not partially observed" = nrow(sample_ps) != nrow(popn_ps))
+    
+    observed_sample <- ifelse(!is.na(left_join(popn_ps, sample_ps %>% select(-c(y_count,y_prob)))$n_j), TRUE, FALSE)
+    
+    reference_model_obs <- approx_loco_referencemodel(reference_model = reference_model,
+                                                      candidate_model = candidate_model,
+                                                      popn_counts = popn_ps$Nj,
+                                                      popn_obs = popn_ps$Nj,
+                                                      popn_ps = popn_ps %>% 
+                                                        rename(n_j = Nj),
+                                                      observed_cells = observed_sample,
+                                                      sample_counts = sample_ps$n_j,
+                                                      sample_obs = sample_ps$y_count) 
+      
+    for(k in 1:length(levels_of_small_area_var)){
+      target_area <- levels_of_small_area_var[[k]]
+      popn_ps_sae <- popn_ps %>%
+        filter(.data[[small_area_var]] == target_area) %>%
+        mutate(n_j = Nj)
+      sample_ps_sae <- sample_ps %>%
+        filter(.data[[small_area_var]] == target_area)
+      popn_counts_sae <-popn_ps_sae$Nj
+      popn_obs_sae <- popn_ps_sae$y_count
+      sample_counts_sae <- sample_ps_sae$n_j
+      sample_obs_sae <- sample_ps_sae$y_count
+      loco_approx_score_sae = approx_loco_score(model,
+                                                popn_counts = popn_counts_sae,
+                                                popn_obs = popn_obs_sae,
+                                                popn_ps = popn_ps_sae,
+                                                observed_cells = popn_ps[[small_area_var]] == target_area, 
+                                                sample_counts = sample_counts_sae,
+                                                sample_obs = sample_obs_sae) 
+      if(target_area == levels_of_small_area_var[1]){
+        results_df = data.frame(loco_approx_score_sae, level = target_area, variable = small_area_var)
+      }else{
+        results_df = rbind(results_df,
+                           data.frame(loco_approx_score_sae, level = target_area, variable = small_area_var))
+      }
+    }
+    return(results_df)
+  }
+
 
