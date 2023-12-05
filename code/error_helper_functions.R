@@ -495,9 +495,8 @@ approx_combined_loco_referencemodel <-
     weights_obs = weights(psis_obj_candidate_obs, log = FALSE)
     log_lik_candidate_obs = log_lik(candidate_model)
 
-    psis_diagnostics <- data.frame(iter = ITE, model = paste(formula(model))[1], n_paretok0_7 = sum(psis_obj$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj$diagnostics$pareto_k>.7))
-    saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/combined_reference/model_",paste(formula(model))[1],"_simulation_iter",ITE,".rds"))
-    
+    psis_diagnostics <- data.frame(iter = ITE, model = paste(formula(candidate_model))[1], n_paretok0_7 = sum(psis_obj_candidate_obs$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj_candidate_obs$diagnostics$pareto_k>.7))
+    saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/combined_reference/model_",paste(formula(candidate_model))[1],"_simulation_iter",ITE,".rds"))
     
     #Shuffle
     shuffle_candidate_obs <- sample(1:S, size = S, replace = FALSE)
@@ -505,6 +504,13 @@ approx_combined_loco_referencemodel <-
     psis_obj_candidate_prime_obs <- psis(-log_lik_candidate_obs-log_lik_candidate_prime_obs, r_eff = relative_eff(exp(-log_lik_candidate_obs-log_lik_candidate_prime_obs), chain_id = rep(1:4, each = 1000)))
     weights_candidate_prime_obs = weights(psis_obj_candidate_prime_obs, log = FALSE)[,]
     model_preds_candidate_prime_obs <- model_preds_candidate_obs[shuffle_candidate_obs,]
+    
+    # squared error
+    sample_truth_matrix_obs <- t(matrix(rep(sample_truth_obs, S), nrow = length(sample_truth_obs)))
+    candidate_error_obs = model_preds_candidate_obs - sample_truth_matrix_obs
+    psis_candidate_error_obs <- E_loo(candidate_error_obs,
+            psis_obj_candidate_obs,
+            type = "mean")$value
     
     #loco crps
     XX_obs = model_preds_candidate_obs - model_preds_candidate_prime_obs
@@ -544,6 +550,11 @@ approx_combined_loco_referencemodel <-
                                                       transform = TRUE,
                                                       allow_new_levels = TRUE,
                                                       sample_new_levels = "gaussian") 
+    
+    #squared error
+    reference_model_error_unobs <- colMeans(model_preds_candidate_unobs)-colMeans(model_preds_ref_unobs)
+    
+    #crps
     shuffle_reference_unobs <- sample(1:S, size = S, replace = FALSE)
     shuffle_candidate_unobs <- sample(1:S, size = S, replace = FALSE)
     
@@ -554,7 +565,7 @@ approx_combined_loco_referencemodel <-
     YY_reference_unobs <- model_preds_ref_unobs - model_preds_reference_unobs_prime
     XY_unobs <- model_preds_ref_unobs - model_preds_candidate_unobs
   
-    mrp_combined_reference_squared_error <-
+    mrp_combined_reference_squared_error <- (sum(c(Nj_obs*psis_candidate_error_obs,Nj_unobs*reference_model_error_unobs))/N)^2
     
     Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)  
     Nj_mat_obs = matrix(rep(Nj_obs,S), nrow = S, byrow = TRUE)  
@@ -569,20 +580,20 @@ approx_combined_loco_referencemodel <-
       results_df <- tribble(
         ~model,                   ~method,            ~score,          ~type_of_score, ~value,
         paste(formula(candidate_model))[1], "APPROX COMBINED LOCO-REFERENCE",      "CRPS",           "MRP CELLWISE", mrp_combined_reference_crps,
-        paste(formula(candidate_model))[1], "APPROX COMBINED LOCO-REFERENCE",      "SQUARED ERROR",  "MRP CELLWISE", mrp_cellwise_squared_candidate_ref
+        paste(formula(candidate_model))[1], "APPROX COMBINED LOCO-REFERENCE",      "SQUARED ERROR",  "MRP CELLWISE", mrp_combined_reference_squared_error
       )
     return(results_df)
   }
 
 
-parially_obs_approx_loco_score <-
+partially_obs_approx_loco_score <-
   function(reference_model,
            candidate_model,
            popn_ps,
            sample_ps) {
     
     stopifnot("The population is not partially observed" = nrow(sample_ps) != nrow(popn_ps))
-
+    
     popn_ps_obs <- popn_ps %>%
       left_join(.,
                 data.frame(sample_ps[c("X1","X2","X3","X4", "n_j","y_count")], observed = TRUE) %>%
@@ -607,48 +618,11 @@ parially_obs_approx_loco_score <-
       mutate(type_of_score = paste0("PARTIAL ", type_of_score))
     
     
-    
-
-    
-    
-    
-    observed_sample <- ifelse(!is.na(left_join(popn_ps, sample_ps %>% select(-c(y_count,y_prob)))$n_j), TRUE, FALSE)
-    
-    reference_model_obs <- approx_loco_referencemodel(reference_model = reference_model,
-                                                      candidate_model = candidate_model,
-                                                      popn_counts = popn_ps$Nj,
-                                                      popn_obs = popn_ps$Nj,
-                                                      popn_ps = popn_ps %>% 
-                                                        rename(n_j = Nj),
-                                                      observed_cells = observed_sample,
-                                                      sample_counts = sample_ps$n_j,
-                                                      sample_obs = sample_ps$y_count) 
-      
-    for(k in 1:length(levels_of_small_area_var)){
-      target_area <- levels_of_small_area_var[[k]]
-      popn_ps_sae <- popn_ps %>%
-        filter(.data[[small_area_var]] == target_area) %>%
-        mutate(n_j = Nj)
-      sample_ps_sae <- sample_ps %>%
-        filter(.data[[small_area_var]] == target_area)
-      popn_counts_sae <-popn_ps_sae$Nj
-      popn_obs_sae <- popn_ps_sae$y_count
-      sample_counts_sae <- sample_ps_sae$n_j
-      sample_obs_sae <- sample_ps_sae$y_count
-      loco_approx_score_sae = approx_loco_score(model,
-                                                popn_counts = popn_counts_sae,
-                                                popn_obs = popn_obs_sae,
-                                                popn_ps = popn_ps_sae,
-                                                observed_cells = popn_ps[[small_area_var]] == target_area, 
-                                                sample_counts = sample_counts_sae,
-                                                sample_obs = sample_obs_sae) 
-      if(target_area == levels_of_small_area_var[1]){
-        results_df = data.frame(loco_approx_score_sae, level = target_area, variable = small_area_var)
-      }else{
-        results_df = rbind(results_df,
-                           data.frame(loco_approx_score_sae, level = target_area, variable = small_area_var))
-      }
-    }
+    combined_reference_model_approach <-approx_combined_loco_referencemodel(reference_model = reference_model, 
+                                                                            candidate_model = candidate_model,
+                                                                            popn_ps = popn_ps,
+                                                                            sample_ps = sample_ps) 
+    results_df = rbind(observed_cells_scores, observed_cells_referencemodel, combined_reference_model_approach)
     return(results_df)
   }
 
