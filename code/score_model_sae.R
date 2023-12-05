@@ -234,7 +234,7 @@ final_df_nuisance_x3model <- rbind(nuisance_x3_approx_loco_sae_score_x1,nuisance
 
 
 
-final_df <- rbind(final_df_fullmodel,final_df_biasmodel, final_df_precisionmodel, final_df_nuisancemodel,final_df_nuisancemodel_x1,final_df_nuisancemodel_x3)
+final_df <- rbind(final_df_fullmodel,final_df_biasmodel, final_df_precisionmodel, final_df_nuisancemodel,final_df_nuisance_x1model,final_df_nuisance_x3model)
 
 final_df$iter = ITE
 

@@ -392,19 +392,19 @@ approx_loco_referencemodel <-
     error_reference = model_preds_ref - sample_truth_matrix
     error_candidate = model_preds_candidate - sample_truth_matrix
     
-    error_full_reference <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
+    error_full_reference <- matrix(0,nrow = S, ncol = dim(psis_obj_reference)[2])
     error_full_reference[,observed_cells_sample] <- error_reference
     psis_error_reference <-
       E_loo(error_full_reference,
-            psis_obj,
+            psis_obj_reference,
             type = "mean")$value[observed_cells_sample]
 
     
-    error_full_candidate <- matrix(0,nrow = S, ncol = dim(psis_obj)[2])
+    error_full_candidate <- matrix(0,nrow = S, ncol = dim(psis_obj_candidate)[2])
     error_full_candidate[,observed_cells_sample] <- error_candidate
     psis_error_candidate <-
       E_loo(error_full_candidate,
-            psis_obj,
+            psis_obj_candidate,
             type = "mean")$value[observed_cells_sample]
     
     mrp_cellwise_squared_candidate_ref <- (sum((psis_error_candidate - psis_error_reference)*Nj)/N)^2 #reference vs candidate
@@ -467,6 +467,125 @@ approx_loco_sae_score <-
     return(results_df)
   }
 
+approx_combined_loco_referencemodel <-
+  function(reference_model, candidate_model,
+           popn_ps,
+           sample_ps) {
+    
+    N = sum(popn_ps$Nj)
+    Nj =  popn_ps$Nj
+    J = length(popn_ps$Nj)
+    
+    ps_obs_indicator <- popn_ps %>%
+      left_join(.,
+                data.frame(sample_ps[c("X1","X2","X3","X4", "n_j","y_count")], observed = TRUE) %>%
+                  rename(y_count_samp = "y_count")) %>%
+      mutate(observed = ifelse(is.na(observed),FALSE, observed))
+    
+    #calculate truth
+    popn_truth = popn_ps$y_count / popn_ps$Nj
+    true_value <- sum(popn_truth*popn_ps$Nj)/sum(popn_ps$Nj)
+    
+    #first focus on observed portion
+    popn_portion_obs = ps_obs_indicator %>%
+      filter(observed == TRUE)
+    
+    sample_truth_obs = popn_portion_obs$y_count_samp / popn_portion_obs$n_j
+    popn_truth_obs = popn_portion_obs$y_count / popn_portion_obs$Nj
+    N_obs = sum( popn_portion_obs$Nj)
+    Nj_obs =  popn_portion_obs$Nj
+    J_obs = length(popn_portion_obs$Nj)
+    S = 4000
+    
+    #Predict probability for each observed cell
+    model_preds_ref <-  posterior_linpred(reference_model, transform = TRUE)
+    model_preds_candidate <-  posterior_linpred(candidate_model, transform = TRUE)      
+    
+    #PSIS
+    psis_loco_reference<- loo(reference_model, save_psis = TRUE, reloo = TRUE, cores = 1)
+    psis_loco_candidate <- loo(candidate_model, save_psis = TRUE, reloo = TRUE, cores = 1)
+    psis_obj_reference <- psis_loco_reference$psis_object
+    psis_obj_candidate <- psis_loco_candidate$psis_object
+    psis_diagnostics_candidate <- data.frame(iter = ITE, model = paste(formula(candidate_model))[1], n_paretok0_7 = sum(psis_obj_candidate$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj_candidate$diagnostics$pareto_k>.7))
+    psis_diagnostics_reference <- data.frame(iter = ITE, model = paste(formula(reference_model))[1], n_paretok0_7 = sum(psis_obj_reference$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj_reference$diagnostics$pareto_k>.7))
+    psis_diagnostics <- rbind(psis_diagnostics_candidate,psis_diagnostics_reference)
+    saveRDS(psis_diagnostics,paste0("results/psis_diagnostics/partial_ref/model_",paste(formula(candidate_model))[1],"_simulation_iter",ITE,".rds"))
+    
+    #Obtain weights
+    weights_reference = weights(psis_obj_reference, log = FALSE)
+    weights_candidate = weights(psis_obj_candidate, log = FALSE)
+    
+    #Shuffle
+    log_lik_reference = log_lik(reference_model)
+    log_lik_candidate = log_lik(candidate_model)
+    
+    shuffle_reference <- sample(1:S, size = S, replace = FALSE)
+    shuffle_candidate <- sample(1:S, size = S, replace = FALSE)
+    
+    log_lik_reference_prime <- log_lik_reference[shuffle_reference,]
+    log_lik_candidate_prime <- log_lik_candidate[shuffle_candidate,]
+    
+    psis_obj_reference_prime <- psis(-log_lik_reference-log_lik_reference_prime, r_eff = relative_eff(exp(-log_lik_reference-log_lik_reference_prime), chain_id = rep(1:4, each = 1000)))
+    psis_obj_candidate_prime <- psis(-log_lik_candidate-log_lik_candidate_prime, r_eff = relative_eff(exp(-log_lik_candidate-log_lik_candidate_prime), chain_id = rep(1:4, each = 1000)))
+    
+    weights_reference_prime = weights(psis_obj_reference_prime, log = FALSE)[,]
+    weights_candidate_prime = weights(psis_obj_candidate_prime, log = FALSE)[,]
+    
+    model_preds_ref_prime <- model_preds_ref[shuffle_reference,]
+    model_preds_candidate_prime <- model_preds_candidate[shuffle_candidate,]
+    
+    #resample
+    reference_preds_resample = matrix(nrow = S, ncol = J_obs)
+    reference_preds_resample_prime = matrix(nrow = S, ncol = J_obs)
+    candidate_preds_resample = matrix(nrow = S, ncol = J_obs)
+    candidate_preds_resample_prime = matrix(nrow = S, ncol = J_obs)
+    for(j in 1:J_obs){
+      reference_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds_ref)[,j],
+                                                     weights = weights_reference[,j])
+      reference_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_ref_prime)[,j],
+                                                           weights = weights_reference_prime[,j]) 
+      candidate_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds_candidate)[,j],
+                                                     weights = weights_candidate[,j])
+      candidate_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_candidate_prime)[,j],
+                                                           weights = weights_candidate_prime[,j]) 
+    }
+    #Squared error
+    psis_error_reference_obs <-
+      E_loo(model_preds_ref,
+            psis_obj_reference,
+            type = "mean")$value
+    
+    psis_error_candidate_obs <-
+      E_loo(model_preds_candidate,
+            psis_obj_candidate,
+            type = "mean")$value
+    
+    mrp_cellwise_squared_candidate_ref_obs <- (sum((psis_error_candidate_obs - psis_error_reference_obs)*Nj_obs)/N_obs)^2 #reference vs candidate
+    
+    #CRPS
+    #loco crps
+    XX_resample_candidate_obs = candidate_preds_resample - candidate_preds_resample_prime
+    YY_resample_reference_obs = reference_preds_resample - reference_preds_resample_prime
+    XY_resample_obs = reference_preds_resample - candidate_preds_resample
+    
+    #Now focus on unobserved portion
+    
+    
+    Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
+    mrp_reference_crps = (1/S)*(.5*sum(abs(rowSums(XX_resample_candidate*Nj_mat)/N)) +
+                                  .5*sum(abs(rowSums(YY_resample_reference*Nj_mat)/N)) -
+                                  sum(abs(rowSums(XY_resample*Nj_mat)/N)))
+    
+    mrp_cellwise_crps_resample = 
+      results_df <- tribble(
+        ~model,                   ~method,            ~score,          ~type_of_score, ~value,
+        paste(formula(candidate_model))[1], "APPROX LOCO REFERENCE",      "CRPS",           "MRP CELLWISE", mrp_reference_crps,
+        paste(formula(candidate_model))[1], "APPROX LOCO REFERENCE",      "SQUARED ERROR",  "MRP CELLWISE", mrp_cellwise_squared_candidate_ref
+      )
+    return(results_df)
+  }
+
+
 parially_obs_approx_loco_score <-
   function(reference_model,
            candidate_model,
@@ -474,6 +593,35 @@ parially_obs_approx_loco_score <-
            sample_ps) {
     
     stopifnot("The population is not partially observed" = nrow(sample_ps) != nrow(popn_ps))
+
+    popn_ps_obs <- popn_ps %>%
+      left_join(.,
+                data.frame(sample_ps[c("X1","X2","X3","X4", "n_j","y_count")], observed = TRUE) %>%
+                  rename(y_count_samp = "y_count")) %>%
+      mutate(observed = ifelse(is.na(observed),FALSE, observed))
+    
+    #calculate scores for observed portion
+    
+    observed_cells_scores <- approx_loco_score(candidate_model,
+                                               popn_counts = popn_ps_obs$Nj[popn_ps_obs$observed==TRUE],
+                                               popn_obs = popn_ps_obs$y_count[popn_ps_obs$observed==TRUE],
+                                               sample_counts = popn_ps_obs$n_j[popn_ps_obs$observed==TRUE],
+                                               sample_obs = popn_ps_obs$y_count_samp[popn_ps_obs$observed==TRUE])%>%
+      mutate(type_of_score = paste0("PARTIAL ", type_of_score))
+    
+    observed_cells_referencemodel<- approx_loco_referencemodel(reference_model = reference_model,
+                                                               candidate_model = candidate_model,
+                                                               popn_counts = popn_ps_obs$Nj[popn_ps_obs$observed==TRUE],
+                                                               popn_obs = popn_ps_obs$y_count[popn_ps_obs$observed==TRUE],
+                                                               sample_counts = popn_ps_obs$n_j[popn_ps_obs$observed==TRUE],
+                                                               sample_obs = popn_ps_obs$y_count_samp[popn_ps_obs$observed==TRUE]) %>%
+      mutate(type_of_score = paste0("PARTIAL ", type_of_score))
+    
+    
+    
+
+    
+    
     
     observed_sample <- ifelse(!is.na(left_join(popn_ps, sample_ps %>% select(-c(y_count,y_prob)))$n_j), TRUE, FALSE)
     

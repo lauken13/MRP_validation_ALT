@@ -53,41 +53,42 @@ popn_ps <- population %>%
   summarise(Nj = n(), y_count = sum(y_obs), y_prob = round(mean(y_prob),2))%>%
   ungroup()
 
+#take half the data and get reference model vals
+observed_value = c(rep(TRUE, 100),rep(FALSE,193))
+
+sample_ps_obs <- sample_ps[observed_value,]
+popn_ps_obs <- popn_ps %>%
+  left_join(.,
+            data.frame(sample_ps_obs[c("X1","X2","X3","X4", "n_j","y_count")], observed = TRUE) %>%
+              rename(y_count_samp = "y_count")) %>%
+  mutate(observed = ifelse(is.na(observed),FALSE, observed))
+
 #full model
-full_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3) + (1|X4), 
-                      data = sample_ps, 
+full_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3) , 
+                      data = sample_ps_obs, 
                       family = binomial(link = "logit"), 
                       backend = "rstan", 
                       cores = 1,
                       save_pars = save_pars(all = TRUE))
 
 model_fit_2 <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X3) + (1|X4), 
-                      data = sample_ps, 
-                      family = binomial(link = "logit"), 
-                      backend = "rstan", 
-                      cores = 1,
-                      save_pars = save_pars(all = TRUE))
+                   data = sample_ps_obs, 
+                   family = binomial(link = "logit"), 
+                   backend = "rstan", 
+                   cores = 1,
+                   save_pars = save_pars(all = TRUE))
 
-#take half the data and get reference model vals
-observed_value = c(rep(TRUE, 100),rep(FALSE,201))
-obseved_cells_vals <- approx_loco_score(full_model_fit,
-                  popn_counts = popn_ps$Nj[observed_value],
-                  popn_obs = popn_ps$y_count[observed_value],
-                  popn_ps = popn_ps[observed_value,] %>%
-                    rename(n_j = Nj),
-                  observed_cells = observed_value, 
-                  sample_counts = sample_ps$n_j[observed_value],
-                  sample_obs = sample_ps$y_count[observed_value]) 
-#fit the model on the subsetted data to confirm similar values
-subset_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3) + (1|X4), 
-                      data = sample_ps[observed_value,], 
-                      family = binomial(link = "logit"), 
-                      backend = "rstan", 
-                      cores = 1,
-                      save_pars = save_pars(all = TRUE))
-subset_cells_vals <- approx_loco_score(subset_model_fit,
-                                        popn_counts = popn_ps$Nj[observed_value],
-                                        popn_obs = popn_ps$y_count[observed_value],
-                                        sample_counts = sample_ps$n_j[observed_value],
-                                        sample_obs = sample_ps$y_count[observed_value]) 
+observed_cells_scores <- approx_loco_score(model_fit_2,
+                  popn_counts = popn_ps_obs$Nj[popn_ps_obs$observed==TRUE],
+                  popn_obs = popn_ps_obs$y_count[popn_ps_obs$observed==TRUE],
+                  sample_counts = popn_ps_obs$n_j[popn_ps_obs$observed==TRUE],
+                  sample_obs = popn_ps_obs$y_count_samp[popn_ps_obs$observed==TRUE])
+
+observed_cells_referencemodel<- approx_loco_referencemodel(reference_model = full_model_fit,
+                                                 candidate_model = model_fit_2,
+                                          popn_counts = popn_ps_obs$Nj[popn_ps_obs$observed==TRUE],
+                                          popn_obs = popn_ps_obs$y_count[popn_ps_obs$observed==TRUE],
+                                          sample_counts = popn_ps_obs$n_j[popn_ps_obs$observed==TRUE],
+                                          sample_obs = popn_ps_obs$y_count_samp[popn_ps_obs$observed==TRUE])
+
 

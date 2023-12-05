@@ -34,12 +34,12 @@ ggplot(aes(x = value, y = true_score, shape = `SAE Level`, colour = Model))+
   facet_wrap(variable~score, scales = "free", ncol = 2)+
   theme_bw()+
   ggthemes::scale_color_colorblind()+  
-  guides(color = guide_legend(nrow = 4),shape = guide_legend(nrow = 5))+
+  guides(color = guide_legend(nrow = 6),shape = guide_legend(nrow = 5))+
   theme(legend.position = "bottom")+
   xlab("LOCO estimated score")+
   ylab("True score")
 
-ggsave("figures/saelevels_truth_vs_psisloco.png", width = 12, height = 20, units = "cm")
+ggsave("figures/saelevels_truth_vs_psisloco.png", width = 15, height = 20, units = "cm")
 
 
 comparison_score %>%
@@ -57,10 +57,35 @@ comparison_score %>%
   facet_wrap(variable~score, scales = "free", ncol = 2)+
   theme_bw()+
   ggthemes::scale_color_colorblind()+  
-  guides(color = guide_legend(nrow = 4),shape = guide_legend(nrow = 5))+
-  theme(legend.position = "bottom")+
-  xlab("Sum_k LOCO estimated score")+
-  ylab("Sum_k True score")
+  guides(color = guide_legend(nrow = 6),shape = guide_legend(nrow = 5))+
+  theme(legend.position = "bottom", legend.title = element_blank())+
+  xlab("Mean LOCO estimated score")+
+  ylab("Mean true score")
 
 
-ggsave("figures/sae_sumk_truth_vs_psisloco.png", width = 12, height = 20, units = "cm")
+ggsave("figures/sae_sumk_truth_vs_psisloco.png", width = 15, height = 20, units = "cm")
+
+comparison_score %>%
+  filter(score == "SQUARED ERROR")%>%
+  group_by(iter, model, variable,score, type_of_score,method) %>%
+  summarise(mean_of_score = mean(value),
+            mean_of_truescore = mean(true_score))%>%
+  ungroup()  %>%
+  mutate(variable = forcats::fct_recode(variable,`SAE: X1` = "X1",
+                                        `SAE: X2` = "X2",
+                                        `SAE: X3` = "X3",
+                                        `SAE: X4` = "X4"))%>%
+  ggplot(aes(x = mean_of_score, y = mean_of_truescore,  colour = model))+
+  geom_abline(slope = 1, intercept = 0)+
+  geom_point(size = 1, alpha = .7)+
+  facet_wrap(variable~., scales = "free", ncol = 2)+
+  theme_bw()+
+  ggthemes::scale_color_colorblind()+  
+  guides(color = guide_legend(nrow = 6),shape = guide_legend(nrow = 5))+
+  theme(legend.position = "right", legend.title = element_blank())+
+  xlab("Mean LOCO estimated score")+
+  ylab("Mean true score")
+
+
+ggsave("figures/slideversion_squarederror_sae_sumk_truth_vs_psisloco.png", width = 20, height = 10, units = "cm")
+
