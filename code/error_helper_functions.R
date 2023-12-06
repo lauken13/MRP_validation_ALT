@@ -492,7 +492,7 @@ approx_combined_loco_referencemodel <-
     model_preds_candidate_obs <-  posterior_linpred(candidate_model,transform = TRUE)
     psis_loco_candidate_obs <- loo(model_preds_candidate_obs, save_psis = TRUE, reloo = TRUE, cores = 1)
     psis_obj_candidate_obs <- psis_loco_candidate_obs$psis_object
-    weights_obs = weights(psis_obj_candidate_obs, log = FALSE)
+    weights_candidate_obs = weights(psis_obj_candidate_obs, log = FALSE)
     log_lik_candidate_obs = log_lik(candidate_model)
 
     psis_diagnostics <- data.frame(iter = ITE, model = paste(formula(candidate_model))[1], n_paretok0_7 = sum(psis_obj_candidate_obs$diagnostics$pareto_k>.7), percent_paretok0_7 = mean(psis_obj_candidate_obs$diagnostics$pareto_k>.7))
@@ -500,7 +500,7 @@ approx_combined_loco_referencemodel <-
     
     #Shuffle
     shuffle_candidate_obs <- sample(1:S, size = S, replace = FALSE)
-    log_lik_candidate_prime_obs <- log_lik_candidate_obs[shuffle_candidate,]
+    log_lik_candidate_prime_obs <- log_lik_candidate_obs[shuffle_candidate_obs,]
     psis_obj_candidate_prime_obs <- psis(-log_lik_candidate_obs-log_lik_candidate_prime_obs, r_eff = relative_eff(exp(-log_lik_candidate_obs-log_lik_candidate_prime_obs), chain_id = rep(1:4, each = 1000)))
     weights_candidate_prime_obs = weights(psis_obj_candidate_prime_obs, log = FALSE)[,]
     model_preds_candidate_prime_obs <- model_preds_candidate_obs[shuffle_candidate_obs,]
@@ -520,7 +520,7 @@ approx_combined_loco_referencemodel <-
     candidate_model_preds_resample_prime = matrix(nrow = S, ncol = J_obs)
     for(j in 1:J_obs){
       candidate_model_preds_resample[,j] <- resample_draws(as_draws_matrix(model_preds_candidate_obs)[,j],
-                                                 weights = weights_candidate[,j])
+                                                 weights = weights_candidate_obs[,j])
       candidate_model_preds_resample_prime[,j] <- resample_draws(as_draws_matrix(model_preds_candidate_prime_obs)[,j],
                                                        weights = weights_candidate_prime_obs[,j]) 
     }
