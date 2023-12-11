@@ -256,6 +256,7 @@ approx_loco_score <-
     true_squarederror <- median((mrp_estimate - true_value)^2) #true 
     mean_cellwise_squarederror <- sum(Nj*(psis_squared_error))/N #summing squared cellwise using popn totals
     mrp_cellwise_squarederror <- (sum(psis_error*Nj)/N)^2 #estimating mrp squared error using pointwise
+    true_mean_cellwise_squarederror = sum(Nj*(colMeans(model_preds) - popn_truth)^2)/N #true pointwise sum of cellwise squared error
     
     #crps
     shuffle <- sample(1:S, size = S, replace = FALSE)
@@ -287,6 +288,10 @@ approx_loco_score <-
     
     loo_crps <- loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik_loco[,observed_cells_sample], r_eff = relative_eff(exp(-log_lik_loco[,observed_cells_sample]), chain_id = rep(1:4, each = 1000)))
     
+    #cellwise true crps
+    cellwise_true_crps <- crps(model_preds, model_preds_prime, popn_truth)$pointwise
+    true_mean_cellwise_crps <- sum(Nj*cellwise_true_crps)/N
+    
     Nj_mat = matrix(rep(Nj,S), nrow = S, byrow = TRUE)
     true_crps <- crps(mrp_estimate, mrp_estimate_prime, true_value)$estimates[1] #true crps for mrp estimate
     mean_cellwise_crps <- sum(Nj*loo_crps(model_preds,model_preds_prime, sample_truth, log_lik = log_lik(model)[,observed_cells_sample], r_eff = relative_eff(exp(log_lik(model)[,observed_cells_sample]), chain_id = rep(1:4, 1000)))$pointwise)/N #sum of pointwise loco crps
@@ -295,8 +300,10 @@ approx_loco_score <-
       ~model,                   ~method,            ~score,          ~type_of_score, ~value,
       paste(formula(model))[1], "EXACT POPULATION", "CRPS",           "TRUE MRP",     true_crps,
       paste(formula(model))[1], "APPROX LOCO",      "CRPS",           "MEAN CELLWISE",mean_cellwise_crps,
+      paste(formula(model))[1], "EXACT POPULATION", "CRPS",           "MEAN CELLWISE",true_mean_cellwise_crps,
       paste(formula(model))[1], "APPROX LOCO",      "CRPS",           "MRP CELLWISE", mrp_cellwise_crps,
       paste(formula(model))[1], "EXACT POPULATION", "SQUARED ERROR",  "TRUE MRP",     true_squarederror,
+      paste(formula(model))[1], "EXACT POPULATION", "SQUARED ERROR",  "MEAN CELLWISE",true_mean_cellwise_squarederror,
       paste(formula(model))[1], "APPROX LOCO",      "SQUARED ERROR",  "MEAN CELLWISE",mean_cellwise_squarederror,
       paste(formula(model))[1], "APPROX LOCO",      "SQUARED ERROR",  "MRP CELLWISE", mrp_cellwise_squarederror,
     )
@@ -563,7 +570,7 @@ approx_combined_loco_referencemodel <-
     
     XX_candidate_unobs <- model_preds_candidate_unobs - model_preds_candidate_unobs_prime
     YY_reference_unobs <- model_preds_ref_unobs - model_preds_reference_unobs_prime
-    XY_unobs <- model_preds_ref_unobs - model_preds_candidate_unobs
+    XY_unobs <- model_preds_candidate_unobs - model_preds_ref_unobs
   
     mrp_combined_reference_squared_error <- (sum(c(Nj_obs*psis_candidate_error_obs,Nj_unobs*reference_model_error_unobs))/N)^2
     
@@ -572,7 +579,7 @@ approx_combined_loco_referencemodel <-
     Nj_mat_unobs = matrix(rep(Nj_unobs,S), nrow = S, byrow = TRUE)  
     mrp_combined_reference_crps = (1/S)*(.5*sum(abs((rowSums(XX_resample_obs*Nj_mat_obs)+ #loco score for obs
                                                       rowSums(XX_candidate_unobs*Nj_mat_unobs))/N)) + #ref for unobs
-                                  .5*sum(abs((rowSums(YY_reference_unobs*Nj_mat_unobs))/N)) - #ref for unobs as Y-Y' = 0 when truth known
+                                  .5*sum(abs((rowSums(YY_reference_unobs*Nj_mat_unobs))/N_unobs)) - #ref for unobs as Y-Y' = 0 when truth known
                                   sum(abs((rowSums(XY_resample_obs*Nj_mat_obs)+ #loco score for obs
                                              rowSums(XY_unobs*Nj_mat_unobs))/N))) #ref for unobs
     

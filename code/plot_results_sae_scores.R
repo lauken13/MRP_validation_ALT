@@ -31,7 +31,7 @@ comparison_score %>%
 ggplot(aes(x = value, y = true_score, shape = `SAE Level`, colour = Model))+
   geom_abline(slope = 1, intercept = 0)+
   geom_point(size = 1, alpha = .7)+
-  facet_wrap(variable~score, scales = "free", ncol = 2)+
+  facet_wrap(variable~score, scales = "free", ncol = 4)+
   theme_bw()+
   ggthemes::scale_color_colorblind()+  
   guides(color = guide_legend(nrow = 6),shape = guide_legend(nrow = 5))+
@@ -39,7 +39,7 @@ ggplot(aes(x = value, y = true_score, shape = `SAE Level`, colour = Model))+
   xlab("LOCO estimated score")+
   ylab("True score")
 
-ggsave("figures/saelevels_truth_vs_psisloco.png", width = 15, height = 20, units = "cm")
+ggsave("figures/saelevels_truth_vs_psisloco.png", width = 20, height = 15, units = "cm")
 
 
 comparison_score %>%
@@ -54,7 +54,7 @@ comparison_score %>%
   ggplot(aes(x = mean_of_score, y = mean_of_truescore,  colour = model))+
   geom_abline(slope = 1, intercept = 0)+
   geom_point(size = 1, alpha = .7)+
-  facet_wrap(variable~score, scales = "free", ncol = 2)+
+  facet_wrap(variable~score, scales = "free", ncol = 4)+
   theme_bw()+
   ggthemes::scale_color_colorblind()+  
   guides(color = guide_legend(nrow = 6),shape = guide_legend(nrow = 5))+
@@ -63,7 +63,7 @@ comparison_score %>%
   ylab("Mean true score")
 
 
-ggsave("figures/sae_sumk_truth_vs_psisloco.png", width = 15, height = 20, units = "cm")
+ggsave("figures/sae_sumk_truth_vs_psisloco.png", width = 20, height = 15, units = "cm")
 
 comparison_score %>%
   filter(score == "SQUARED ERROR")%>%
