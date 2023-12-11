@@ -28,28 +28,22 @@ for(j in 1:4){
   }
 }
 
-diff_scores <- results_df_approx %>%
+psis_score <- results_df_approx %>%
   filter(type_of_score == "MRP CELLWISE") %>%
-  pivot_wider(names_from = "model", values_from = "value") %>%
-  mutate(`y_count | trials(n_j) ~ (1 | X1) + (1 | X3)` = 
-           `y_count | trials(n_j) ~ (1 | X1) + (1 | X3)` - `y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3) + (1 | X4)`,
-         `y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3)` = 
-           `y_count | trials(n_j) ~ (1 | X1) + (1 | X3) + (1 | X2)` - `y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3) + (1 | X4)`,
-         `y_count | trials(n_j) ~ (1 | X1) + (1 | X3) + (1 | X4)` = 
-          `y_count | trials(n_j) ~ (1 | X1) + (1 | X3) + (1 | X4)` -  `y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3) + (1 | X4)`)%>%
-  select(-c(`y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3) + (1 | X4)`,`y_count | trials(n_j) ~ (1 | X1) + (1 | X3) + (1 | X2)`))%>%
-  pivot_longer(`y_count | trials(n_j) ~ (1 | X1) + (1 | X3) + (1 | X4)`:`y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3)`, names_to = "model", values_to = "approx_score_diff")%>%
-  select(score, iter, model, approx_score_diff)
+  rename(psis_approx = "value") %>%
+  select(-method, -type_of_score)
 
 results_refmodel %>%
-  left_join(diff_scores)%>%
-  ggplot(aes(x = value, y = approx_score_diff, colour = model))+
+  mutate(model = factor(model))%>%
+  mutate(model = fct_recode(model, "y_count | trials(n_j) ~ (1 | X1) + (1 | X3) + (1 | X2)" = "y_count | trials(n_j) ~ (1 | X1) + (1 | X2) + (1 | X3)")) %>%
+  left_join(psis_score)%>%
+  ggplot(aes(x = value, y = psis_approx, colour = model))+
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
   facet_wrap(type_of_score~score, scales = "free")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
-  xlab("Reference model score") + ylab("PSIS Score(Mk) - PSIS Score(M*)")+
+  xlab("Reference model score (Mk)") + ylab("PSIS Score(Mk)")+
   guides(color = guide_legend(nrow = 4))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())

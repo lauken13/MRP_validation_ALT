@@ -53,7 +53,7 @@ popn_ps <- population %>%
   summarise(Nj = n(), y_count = sum(y_obs), y_prob = round(mean(y_prob),2))%>%
   ungroup()
 
-
+#full model
 full_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3) + (1|X4), 
                       data = sample_ps, 
                       family = binomial(link = "logit"), 
@@ -81,7 +81,160 @@ approx_loco_sae_score_x4 <- approx_loco_sae_score(model = full_model_fit,
                                                   popn_ps = popn_ps,
                                                   sample_ps = sample_ps)
 
-final_df <- rbind(approx_loco_sae_score_x1,approx_loco_sae_score_x2,approx_loco_sae_score_x3,approx_loco_sae_score_x4)
+final_df_fullmodel <- rbind(approx_loco_sae_score_x1,approx_loco_sae_score_x2,approx_loco_sae_score_x3,approx_loco_sae_score_x4)
+
+precision_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X2) +(1|X3), 
+                      data = sample_ps, 
+                      family = binomial(link = "logit"), 
+                      backend = "rstan", 
+                      cores = 1,
+                      save_pars = save_pars(all = TRUE))
+
+precision_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = precision_model_fit,
+                                                  small_area_var = "X1",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+precision_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = precision_model_fit,
+                                                  small_area_var = "X2",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+precision_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = precision_model_fit,
+                                                  small_area_var = "X3",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+precision_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = precision_model_fit,
+                                                  small_area_var = "X4",
+                                                  popn_ps = popn_ps,
+                                                  sample_ps = sample_ps)
+
+final_df_precisionmodel <- rbind(precision_approx_loco_sae_score_x1,precision_approx_loco_sae_score_x2,precision_approx_loco_sae_score_x3,precision_approx_loco_sae_score_x4)
+
+bias_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X4) +(1|X3), 
+                      data = sample_ps, 
+                      family = binomial(link = "logit"), 
+                      backend = "rstan", 
+                      cores = 1,
+                      save_pars = save_pars(all = TRUE))
+
+bias_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = bias_model_fit,
+                                                       small_area_var = "X1",
+                                                       popn_ps = popn_ps,
+                                                       sample_ps = sample_ps)
+
+bias_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = bias_model_fit,
+                                                       small_area_var = "X2",
+                                                       popn_ps = popn_ps,
+                                                       sample_ps = sample_ps)
+
+bias_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = bias_model_fit,
+                                                       small_area_var = "X3",
+                                                       popn_ps = popn_ps,
+                                                       sample_ps = sample_ps)
+
+bias_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = bias_model_fit,
+                                                       small_area_var = "X4",
+                                                       popn_ps = popn_ps,
+                                                       sample_ps = sample_ps)
+
+final_df_biasmodel <- rbind(bias_approx_loco_sae_score_x1,bias_approx_loco_sae_score_x2,bias_approx_loco_sae_score_x3,bias_approx_loco_sae_score_x4)
+
+nuisance_model_fit <- brm(y_count|trials(n_j) ~ (1|X1) + (1|X3), 
+                           data = sample_ps, 
+                           family = binomial(link = "logit"), 
+                           backend = "rstan", 
+                           cores = 1,
+                           save_pars = save_pars(all = TRUE))
+
+nuisance_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = nuisance_model_fit,
+                                                            small_area_var = "X1",
+                                                            popn_ps = popn_ps,
+                                                            sample_ps = sample_ps)
+
+nuisance_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = nuisance_model_fit,
+                                                            small_area_var = "X2",
+                                                            popn_ps = popn_ps,
+                                                            sample_ps = sample_ps)
+
+nuisance_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = nuisance_model_fit,
+                                                            small_area_var = "X3",
+                                                            popn_ps = popn_ps,
+                                                            sample_ps = sample_ps)
+
+nuisance_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = nuisance_model_fit,
+                                                            small_area_var = "X4",
+                                                            popn_ps = popn_ps,
+                                                            sample_ps = sample_ps)
+
+
+final_df_nuisancemodel <- rbind(nuisance_approx_loco_sae_score_x1,nuisance_approx_loco_sae_score_x2,nuisance_approx_loco_sae_score_x3,nuisance_approx_loco_sae_score_x4)
+
+
+nuisance_x1_model_fit <- brm(y_count|trials(n_j) ~ (1|X1), 
+                          data = sample_ps, 
+                          family = binomial(link = "logit"), 
+                          backend = "rstan", 
+                          cores = 1,
+                          save_pars = save_pars(all = TRUE))
+
+nuisance_x1_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X1",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+nuisance_x1_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X2",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+nuisance_x1_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X3",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+nuisance_x1_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = nuisance_x1_model_fit,
+                                                           small_area_var = "X4",
+                                                           popn_ps = popn_ps,
+                                                           sample_ps = sample_ps)
+
+
+final_df_nuisance_x1model <- rbind(nuisance_x1_approx_loco_sae_score_x1,nuisance_x1_approx_loco_sae_score_x2,nuisance_x1_approx_loco_sae_score_x3,nuisance_x1_approx_loco_sae_score_x4)
+
+nuisance_x3_model_fit <- brm(y_count|trials(n_j) ~ (1|X3), 
+                             data = sample_ps, 
+                             family = binomial(link = "logit"), 
+                             backend = "rstan", 
+                             cores = 1,
+                             save_pars = save_pars(all = TRUE))
+
+nuisance_x3_approx_loco_sae_score_x1 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X1",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+nuisance_x3_approx_loco_sae_score_x2 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X2",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+nuisance_x3_approx_loco_sae_score_x3 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X3",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+nuisance_x3_approx_loco_sae_score_x4 <- approx_loco_sae_score(model = nuisance_x3_model_fit,
+                                                              small_area_var = "X4",
+                                                              popn_ps = popn_ps,
+                                                              sample_ps = sample_ps)
+
+
+final_df_nuisance_x3model <- rbind(nuisance_x3_approx_loco_sae_score_x1,nuisance_x3_approx_loco_sae_score_x2,nuisance_x3_approx_loco_sae_score_x3,nuisance_x3_approx_loco_sae_score_x4)
+
+
+
+final_df <- rbind(final_df_fullmodel,final_df_biasmodel, final_df_precisionmodel, final_df_nuisancemodel,final_df_nuisance_x1model,final_df_nuisance_x3model)
 
 final_df$iter = ITE
 

@@ -58,6 +58,59 @@ ggplot(comparison_score, aes(x = value, y = mean_truth, colour = model)) +
 
 ggsave("figures/proof_of_score.png", width = 20, height = 12, units = "cm")
 
+
+#Compare with mean of score method
+
+true_score <- results_df %>%
+  filter(method == "EXACT POPULATION" & type_of_score == "TRUE MRP")%>%
+  group_by(model, score, iter)%>%
+  summarise(mean_truth = mean(value))%>% #small variations across model runs
+  ungroup()
+
+comparison_score <- results_df %>%
+  filter(method == "EXACT POPULATION" & type_of_score == "MEAN CELLWISE")%>%
+  left_join(true_score)
+
+ggplot(comparison_score, aes(x = value, y = mean_truth, colour = model)) +
+  geom_abline()+
+  geom_point(size = 1, alpha = .7)+
+  facet_wrap(.~score, scales = "free")+
+  theme_bw()+
+  ggthemes::scale_color_colorblind()+
+  xlab("Mean of cellwise score") + ylab("Population score")+
+  guides(color = guide_legend(nrow = 4))+
+  theme(legend.position = "bottom", 
+        legend.title = element_blank())
+
+ggsave("figures/meancellwise_vs_population.png", width = 20, height = 12, units = "cm")
+
+
+#Compare with mean of score to true mean of score
+
+true_score_cellwise <- results_df %>%
+  filter(method == "EXACT POPULATION" & type_of_score == "MEAN CELLWISE")%>%
+  group_by(model, score, iter)%>%
+  summarise(mean_truth = mean(value))%>% #small variations across model runs
+  ungroup()
+
+comparison_score_cellwise <- results_df %>%
+  filter(method == "APPROX LOCO" & type_of_score == "MEAN CELLWISE")%>%
+  left_join(true_score_cellwise)
+
+ggplot(comparison_score_cellwise, aes(x = value, y = mean_truth, colour = model)) +
+  geom_abline()+
+  geom_point(size = 1, alpha = .7)+
+  facet_wrap(.~score, scales = "free")+
+  theme_bw()+
+  ggthemes::scale_color_colorblind()+
+  xlab("Mean of approx cellwise score") + ylab("Sum of cellwise scores in population")+
+  guides(color = guide_legend(nrow = 4))+
+  theme(legend.position = "bottom", 
+        legend.title = element_blank())
+
+ggsave("figures/meancellwise_vs_populationcellwise.png", width = 20, height = 12, units = "cm")
+
+
 #Compare scores using sample as proxxy for population 
 sample_score <- results_df %>%
   filter(method == "SAMPLE ESTIMATE"  & type_of_score == "MRP CELLWISE")%>%
