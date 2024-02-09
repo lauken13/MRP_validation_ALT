@@ -33,6 +33,10 @@ for(j in 1:4){
 
 results_df <- rbind(results_df, results_df_approx)
 
+results_df <- results_df %>%
+  mutate(value = ifelse(score == "CRPS", -value, value),
+         score = ifelse(score == "CRPS", "-CRPS",score))
+
 #Compare exact population methods
 
 true_score <- results_df %>%
@@ -52,7 +56,7 @@ ggplot(comparison_score, aes(x = value, y = mean_truth, colour = model)) +
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Cellwise formula") + ylab("Population score")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -78,7 +82,7 @@ ggplot(comparison_score, aes(x = value, y = mean_truth, colour = model)) +
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Mean of cellwise score") + ylab("Population score")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -104,7 +108,7 @@ ggplot(comparison_score_cellwise, aes(x = value, y = mean_truth, colour = model)
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Mean of approx cellwise score") + ylab("Sum of cellwise scores in population")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -113,7 +117,7 @@ ggsave("figures/meancellwise_vs_populationcellwise.png", width = 20, height = 12
 
 #Compare scores using sample as proxxy for population 
 sample_score <- results_df %>%
-  filter(method == "SAMPLE ESTIMATE"  & type_of_score == "MRP CELLWISE")%>%
+  filter(method %in% c("SAMPLE ESTIMATE")  & type_of_score == "MRP CELLWISE")%>%
   left_join(true_score)
 
 ggplot(sample_score, aes(x = value, y = mean_truth, colour = model)) +
@@ -123,7 +127,7 @@ ggplot(sample_score, aes(x = value, y = mean_truth, colour = model)) +
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Sample estimate") + ylab("Truth")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -137,11 +141,11 @@ bruteforce_loco <- results_df %>%
 ggplot(bruteforce_loco, aes(x = value, y = mean_truth, colour = model)) +
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
-  facet_wrap(type_of_score~score, scales = "free")+
+  facet_wrap(.~score, scales = "free")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Brute-force LOCO") + ylab("True Score")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -155,11 +159,11 @@ sample_score <- results_df %>%
 ggplot(sample_score, aes(x = `SAMPLE ESTIMATE`, y = `BRUTE FORCE LOCO`, colour = model)) +
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
-  facet_wrap(type_of_score~score, scales = "free")+
+  facet_wrap(.~score, scales = "free")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Sample Estimate") + ylab("Brute force LOCO")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -176,7 +180,7 @@ ggplot(approx_loco, aes(x = value, y = mean_truth, colour = model)) +
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Estimate") + ylab("Truth")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -196,7 +200,7 @@ sample_score %>%
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Brute-force LOCO") + ylab("PSIS-LOCO")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 

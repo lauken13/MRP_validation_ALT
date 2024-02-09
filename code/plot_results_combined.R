@@ -40,10 +40,11 @@ results_comb_ref_model %>%
   filter(type_of_score %in% c("PARTIAL MRP CELLWISE")) %>%
   pivot_wider(names_from = "method", values_from = "value") %>%
   ggplot(., aes(x = `APPROX LOCO REFERENCE`, y = `APPROX LOCO`, colour = model))+
+  geom_abline(intercept = 0, slope = 1 )+
   geom_point(size = 1, alpha = .7)+
   facet_wrap(score~reference_model, scales = "free")+
-  xlab("LOCO Reference Model Approach")+
-  ylab("LOCO Error Approach")+
+  xlab("PSIS LOCO Reference Validation Score")+
+  ylab("PSIS LOCO Cross Validation Score")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   guides(color = guide_legend(nrow = 4))+
@@ -59,8 +60,8 @@ results_comb_ref_model %>%
   geom_abline(intercept = 0, slope = 1 )+
   geom_point(size = 1, alpha = .7)+
   facet_wrap(.~score, scales = "free")+
-  xlab("LOCO Combined Reference Model Approach")+
-  ylab("True Error")+
+  xlab("PSIS LOCO Reference Validation Score")+
+  ylab("True Score")+
   ggthemes::scale_color_colorblind()+
   guides(color = guide_legend(nrow = 4))+
   theme_bw()+
