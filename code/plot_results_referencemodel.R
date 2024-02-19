@@ -14,6 +14,10 @@ for(i in 1:100){
   }
 }
 
+results_refmodel <- results_refmodel %>%
+  mutate(value = ifelse(score == "CRPS", -value, value),
+         score = ifelse(score == "CRPS", "-CRPS",score))
+
 for(j in 1:4){
   for(i in 1:100){
     print(paste0("model no",j, "iter",i))
@@ -27,6 +31,10 @@ for(j in 1:4){
     }
   }
 }
+
+results_df_approx <- results_df_approx %>%
+  mutate(value = ifelse(score == "CRPS", -value, value),
+         score = ifelse(score == "CRPS", "-CRPS",score))
 
 psis_score <- results_df_approx %>%
   filter(type_of_score == "MRP CELLWISE") %>%
@@ -44,7 +52,7 @@ results_refmodel %>%
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Reference model score (Mk)") + ylab("PSIS Score(Mk)")+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 

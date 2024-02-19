@@ -31,6 +31,10 @@ for(i in 1:100){
   }
 }
 
+results_comb_ref_model <- results_comb_ref_model %>%
+  mutate(value = ifelse(score == "CRPS", -value, value),
+         score = ifelse(score == "CRPS", "-CRPS",score))
+
 true_score <- results_comb_ref_model %>%
   filter(type_of_score == "TRUE MRP") %>%
   rename(true_score = "value") %>%
@@ -47,7 +51,7 @@ results_comb_ref_model %>%
   ylab("PSIS LOCO Cross Validation Score")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom",
         legend.title = element_blank())
 
@@ -63,7 +67,7 @@ results_comb_ref_model %>%
   xlab("PSIS LOCO Reference Validation Score")+
   ylab("True Score")+
   ggthemes::scale_color_colorblind()+
-  guides(color = guide_legend(nrow = 4))+
+  guides(color = guide_legend(nrow = 2))+
   theme_bw()+
   theme(legend.position = "bottom",
         legend.title = element_blank())

@@ -13,6 +13,10 @@ for(i in 1:100){
   }
 }
 
+results_saemodel <- results_saemodel %>%
+  mutate(value = ifelse(score == "CRPS", -value, value),
+         score = ifelse(score == "CRPS", "-CRPS",score))
+
 true_score <- results_saemodel %>%
   filter(method == "EXACT POPULATION" & type_of_score == "TRUE MRP")%>%
   rename(true_score = value)%>%
@@ -57,7 +61,7 @@ comparison_score %>%
   facet_wrap(variable~score, scales = "free", ncol = 4)+
   theme_bw()+
   ggthemes::scale_color_colorblind()+  
-  guides(color = guide_legend(nrow = 6),shape = guide_legend(nrow = 5))+
+  guides(color = guide_legend(nrow = 3),shape = guide_legend(nrow = 5))+
   theme(legend.position = "bottom", legend.title = element_blank())+
   xlab("Mean LOCO estimated score")+
   ylab("Mean true score")

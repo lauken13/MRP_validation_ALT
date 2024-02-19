@@ -1,5 +1,5 @@
 library(tidyverse)
-
+library(gridExtra)
 for(j in 1:4){
   for(i in 1:100){
     print(paste0("model no",j, "iter",i))
@@ -138,7 +138,7 @@ bruteforce_loco <- results_df %>%
   filter(method == "BRUTE FORCE LOCO" & type_of_score == "MRP CELLWISE")%>%
   left_join(true_score)
 
-ggplot(bruteforce_loco, aes(x = value, y = mean_truth, colour = model)) +
+truth_by_bruteforce <- ggplot(bruteforce_loco, aes(x = value, y = mean_truth, colour = model)) +
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
   facet_wrap(.~score, scales = "free")+
@@ -149,25 +149,27 @@ ggplot(bruteforce_loco, aes(x = value, y = mean_truth, colour = model)) +
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/bruteforce_vs_truth.png", width = 20, height = 12, units = "cm")
+ggsave(plot = truth_by_bruteforce, 
+       filename = "figures/bruteforce_vs_truth.png", width = 20, height = 12, units = "cm")
 
 #Does brute force loco deviate from just using the sample score
 sample_score <- results_df %>%
   filter(method %in% c("SAMPLE ESTIMATE", "BRUTE FORCE LOCO") & type_of_score == "MRP CELLWISE")%>%
   pivot_wider(names_from = method, values_from = value)
 
-ggplot(sample_score, aes(x = `SAMPLE ESTIMATE`, y = `BRUTE FORCE LOCO`, colour = model)) +
+sample_bruteforce <- ggplot(sample_score, aes(y = `SAMPLE ESTIMATE`, x = `BRUTE FORCE LOCO`, colour = model)) +
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
   facet_wrap(.~score, scales = "free")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
-  xlab("Sample Estimate") + ylab("Brute force LOCO")+
+  ylab("Sample Estimate") + xlab("Brute force LOCO")+
   guides(color = guide_legend(nrow = 2))+
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/bruteforce_vs_sample_score.png", width = 20, height = 12, units = "cm")
+ggsave(plot = bruteforce_by_sample, 
+       filename = "figures/bruteforce_vs_sample_score.png", width = 20, height = 12, units = "cm")
 
 #PSIS LOCO
 approx_loco <- results_df %>%
@@ -176,7 +178,7 @@ approx_loco <- results_df %>%
 
 ggplot(approx_loco, aes(x = value, y = mean_truth, colour = model)) +
   geom_point(size = 1, alpha = .7)+
-  facet_wrap(type_of_score~score, scales = "free")+
+  facet_wrap(.~score, scales = "free")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Estimate") + ylab("Truth")+
@@ -191,12 +193,12 @@ sample_score <- results_df %>%
          type_of_score %in% c("MRP CELLWISE"))%>%
   pivot_wider(names_from = method, values_from = value)
 
-sample_score %>%
+psis_bruteforce <- sample_score %>%
   filter(type_of_score == "MRP CELLWISE")%>%
-  ggplot(., aes(x = `BRUTE FORCE LOCO`, y = `APPROX LOCO`, colour = model)) +
+  ggplot(., aes(y = `APPROX LOCO`, x = `BRUTE FORCE LOCO`, colour = model)) +
   geom_abline() +
   geom_point(size = 1, alpha = .7)+
-  facet_wrap(type_of_score~score, scales = "free")+
+  facet_wrap(.~score, scales = "free")+
   theme_bw()+
   ggthemes::scale_color_colorblind()+
   xlab("Brute-force LOCO") + ylab("PSIS-LOCO")+
@@ -204,4 +206,15 @@ sample_score %>%
   theme(legend.position = "bottom", 
         legend.title = element_blank())
 
-ggsave("figures/bruteforce_vs_psisloco.png", width = 20, height = 12, units = "cm")
+ggsave(plot = bruteforce_by_psis, 
+       filename = "figures/bruteforce_vs_psisloco.png", width = 20, height = 12, units = "cm")
+
+
+combined_plots <- grid.arrange(sample_bruteforce +
+               theme(legend.position = "none"), psis_bruteforce +
+               theme(strip.background = element_blank(),strip.text.x = element_blank()), 
+             heights = c(9, 10), nrow = 2)
+
+ggsave(plot = combined_plots, 
+       filename = "figures/bruteforce_vs_sample_psis.png", width = 20, height = 15, units = "cm")
+
