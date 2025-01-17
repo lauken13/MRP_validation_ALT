@@ -199,7 +199,10 @@ approx_loco_score <-
            popn_ps = NULL,
            observed_cells_sample = NULL, #allows you to estimate errors for saes
            sample_counts,
-           sample_obs) {
+           sample_obs,
+           method = "probability" # allows you to choose between using probability or
+           #nj bernoulli draws when estimating cell probability.
+  ) {
     sample_truth = sample_obs / sample_counts
     popn_truth = popn_obs / popn_counts
     N = sum(popn_counts)
@@ -209,9 +212,29 @@ approx_loco_score <-
     
     #Predict probability for each cell
     if(is_empty(popn_ps)){
-      model_preds <-  posterior_linpred(model,transform = TRUE)
+      if(method == "bernoulli"){
+        model_preds <-  posterior_predict(model)
+        for(i in 1:nrow(model_preds)){
+          model_preds[i,] <- model_preds[i,]/sample_counts
+        }
+      }else if(method == "probability"){
+        model_preds <-  posterior_linpred(model,transform = TRUE)
+      } else{
+        print("method input should be probability or bernoulli")
+        stop()
+      }
     }else{
-      model_preds <-  posterior_linpred(model,newdata = popn_ps, transform = TRUE)
+      if(method == "bernoulli"){
+        model_preds <-  posterior_predict(model, newdata = cbind(popn_ps, nj = sample_counts))
+        for(i in 1:nrow(model_preds)){
+          model_preds[i,] <- model_preds[i,]/sample_counts
+        }
+      }else if(method == "probability"){
+        model_preds <-  posterior_linpred(model,newdata = popn_ps,transform = TRUE)
+      } else{
+        print("method input should be probability or bernoulli")
+        stop()
+      }
     }
     
     #if working with full ps
